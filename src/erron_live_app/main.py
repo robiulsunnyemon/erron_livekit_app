@@ -10,4 +10,4 @@ async def check_health():
     return {"message":"Api is working perfectly"}
 
 
-app.include_router(stream_router,prefix="api/v1")
+app.include_router(stream_router,prefix="/api/v1")
