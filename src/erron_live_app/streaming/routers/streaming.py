@@ -5,7 +5,7 @@ from livekit import api
 from erron_live_app.streaming.schemas.streaming import TokenRequest
 
 load_dotenv()
-router = APIRouter(prefix="streaming",tags=["Stream"])
+router = APIRouter(prefix="/streaming",tags=["Stream"])
 
 
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
