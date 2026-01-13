@@ -28,7 +28,7 @@ async def get_token(request: TokenRequest):
         )
 
         grant.with_grants(permissions)
-        return {"token": grant.to_jwt()}
+        return {"livekit_token": grant.to_jwt()}
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
