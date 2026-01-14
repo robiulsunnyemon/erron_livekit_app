@@ -1,10 +1,28 @@
 
 from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+from uuid import UUID
 
 
+class LiveStartRequest(BaseModel):
+    is_premium: bool = False
+    entry_fee: int = 0
 
-class TokenRequest(BaseModel):
+
+class LiveJoinRequest(BaseModel):
+    channel_name: str
+
+
+class LiveStreamResponse(BaseModel):
+    id: str
+    host_id: str
     room_name: str
-    participant_name: str
-    is_host: bool
+    token: str
+    is_premium: bool
+    entry_fee: int
+    status: str
+    start_time: datetime
 
+    class Config:
+        from_attributes = True
