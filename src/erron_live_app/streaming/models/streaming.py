@@ -35,7 +35,7 @@ class LiveViewerModel(BaseCollection):
     session: Link[LiveStreamModel]
     user: Link[UserModel]
     joined_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-    fee_paid: int = 0
+    fee_paid: float = 0
 
     class Settings:
         name = "live_viewers"
@@ -59,3 +59,14 @@ class LiveLikeModel(BaseCollection):
 
     class Settings:
         name = "live_likes"
+
+
+class LiveRatingModel(BaseCollection):
+    session: Link[LiveStreamModel]
+    user: Link[UserModel]
+    rating: int = Field(ge=1, le=5) # 1 to 5 stars
+    feedback: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    class Settings:
+        name = "live_ratings"

@@ -10,6 +10,9 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from erron_live_app.users.routers.auth_routers import router as auth_router
 from erron_live_app.users.routers.user_routers import user_router
 from erron_live_app.users.routers.follow_routers import router as follower_router
+from erron_live_app.finance.routers.finance import router as finance_router
+from erron_live_app.streaming.routers.gifting import router as gifting_router
+from erron_live_app.streaming.routers.interactions import router as interactions_router
 
 
 
@@ -56,3 +59,6 @@ app.include_router(auth_router,prefix="/api/v1")
 app.include_router(user_router,prefix="/api/v1")
 app.include_router(stream_router,prefix="/api/v1")
 app.include_router(follower_router,prefix="/api/v1")
+app.include_router(finance_router,prefix="/api/v1")
+app.include_router(gifting_router,prefix="/api/v1")
+app.include_router(interactions_router,prefix="/api/v1")
