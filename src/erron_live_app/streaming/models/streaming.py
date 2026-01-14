@@ -1,4 +1,4 @@
-from beanie import before_event, Replace, Save, Link
+from beanie import before_event, Replace, Save, Link,after_event, Delete
 from pydantic import Field
 from datetime import datetime, timezone
 from typing import Optional
@@ -26,6 +26,15 @@ class LiveStreamModel(BaseCollection):
     def update_timestamp(self):
         self.updated_at = datetime.now(timezone.utc)
 
+    @after_event(Delete)
+    async def cleanup_related_data(self):
+        # এই সেশনের সাথে যুক্ত সকল ডাটা ডিলিট করা হচ্ছে
+        session_id = self.id
+
+        await LiveViewerModel.find(LiveViewerModel.session.id == session_id).delete()
+        await LiveCommentModel.find(LiveCommentModel.session.id == session_id).delete()
+        await LiveLikeModel.find(LiveLikeModel.session.id == session_id).delete()
+        await LiveRatingModel.find(LiveRatingModel.session.id == session_id).delete()
     class Settings:
         name = "livestreams"
 
