@@ -5,12 +5,11 @@ from typing import cast, List
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from livekit import api
 from dotenv import load_dotenv
-
 from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveViewerModel
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
-from streaming.models.streaming import LiveCommentModel, LiveLikeModel
+from erron_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
 
 load_dotenv()
 router = APIRouter(prefix="/streaming", tags=["Live Stream"])
