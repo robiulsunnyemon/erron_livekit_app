@@ -4,7 +4,7 @@ from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 from erron_live_app.users.models.user_models import UserModel
-from streaming.models.streaming import LiveStreamModel,LiveViewerModel,LiveCommentModel,LiveLikeModel
+from erron_live_app.streaming.models.streaming import LiveStreamModel,LiveViewerModel,LiveCommentModel,LiveLikeModel
 
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
