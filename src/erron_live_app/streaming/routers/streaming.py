@@ -10,6 +10,7 @@ from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveViewe
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
+from streaming.models.streaming import LiveCommentModel, LiveLikeModel
 
 load_dotenv()
 router = APIRouter(prefix="/streaming", tags=["Live Stream"])
@@ -157,6 +158,35 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
 @router.get("/active-streams", response_model=List[LiveStreamModel])
 async def get_active_streams():
     return await LiveStreamModel.find(LiveStreamModel.status == "live", fetch_links=True).to_list()
+
+
+@router.get("/all/comment", status_code=status.HTTP_200_OK)
+async def get_all_comment():
+    return await LiveCommentModel.find(fetch_links=True).to_list()
+
+@router.delete("/delete/all/comment", status_code=status.HTTP_200_OK)
+async def delete_all_comment():
+    await LiveCommentModel.delete_all()
+    return {"message": "successfully deleted all comments"}
+
+
+@router.get("/all/viewers", status_code=status.HTTP_200_OK)
+async def get_all_comment():
+    return await LiveViewerModel.find(fetch_links=True).to_list()
+
+@router.delete("/delete/all/viewers", status_code=status.HTTP_200_OK)
+async def delete_all_viewers():
+    await LiveViewerModel.delete_all()
+    return {"message": "successfully deleted all viewers"}
+
+@router.get("/all/likes",status_code=status.HTTP_200_OK)
+async def get_all_likes():
+    return await LiveLikeModel.find(fetch_links=True).to_list()
+
+@router.delete("/delete/all/likes", status_code=status.HTTP_200_OK)
+async def delete_all_likes():
+    await LiveLikeModel.delete_all()
+    return {"message": "successfully deleted all likes"}
 
 
 @router.delete("/delete/all/live",status_code=status.HTTP_200_OK)
