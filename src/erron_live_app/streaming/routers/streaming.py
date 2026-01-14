@@ -57,6 +57,12 @@ async def get_all_livestream():
     return await LiveStreamModel.find_all().to_list()
 
 
+@router.delete("/delete/all/live",status_code=status.HTTP_200_OK)
+async def delete_all_livestream():
+    await LiveStreamModel.delete_all()
+    return {"message":"successfully deleted all livestream"}
+
+
 
 
 
