@@ -3,9 +3,9 @@ import time
 from dotenv import load_dotenv
 from fastapi import APIRouter,status,HTTPException,Depends
 from livekit import api
-from streaming.models.streaming import LiveStreamModel
-from users.models.user_models import UserModel
-from users.utils.get_current_user import get_current_user
+from erron_live_app.streaming.models.streaming import LiveStreamModel
+from erron_live_app.users.models.user_models import UserModel
+from erron_live_app.users.utils.get_current_user import get_current_user
 
 load_dotenv()
 router = APIRouter(prefix="/streaming",tags=["Live Stream"])
