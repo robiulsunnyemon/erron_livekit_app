@@ -37,18 +37,28 @@ def create_livekit_token(identity: str, name: str, room_name: str, can_publish: 
 
 @router.post("/webhook")
 async def livekit_webhook(request: Request):
-    # নতুন ভার্সনে শুধু secret দিয়ে রিসিভার তৈরি করতে হয় অথবা সরাসরি ভেরিফাই করতে হয়
-    receiver = api.WebhookReceiver(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+    # নতুন ভার্সনে KeyProvider ব্যবহার করতে হয় অথবা সরাসরি WebhookReceiver এ keys দিতে হয়
+    # কিন্তু সবথেকে সহজ উপায় হলো টোকেন ভেরিফাই করা
+
+    auth_header = request.headers.get("Authorization")
+    if not auth_header:
+        raise HTTPException(status_code=400, detail="Authorization header missing")
 
     try:
         body = await request.body()
-        auth_header = request.headers.get("Authorization")
-        # এটি এখন ইভেন্ট অবজেক্ট রিটার্ন করবে
+        # সরাসরি API key এবং Secret দিয়ে রিসিভার তৈরি
+        receiver = api.WebhookReceiver(
+            api.TokenVerifier(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+        )
+
+        # ইভেন্ট রিসিভ করা
         event = receiver.receive(body.decode("utf-8"), auth_header)
+
     except Exception as e:
         print(f"Webhook Error: {e}")
-        raise HTTPException(status_code=400, detail="ভেরিফিকেশন ব্যর্থ হয়েছে")
+        raise HTTPException(status_code=400, detail="Verification failed")
 
+    # বাকি লজিক আগের মতোই থাকবে
     if event.event == "room_finished":
         room_name = event.room.name
         live_session = await LiveStreamModel.find_one(
