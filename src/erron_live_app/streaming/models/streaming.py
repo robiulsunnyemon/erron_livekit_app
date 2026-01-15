@@ -8,6 +8,9 @@ from erron_live_app.users.models.user_models import UserModel
 class LiveStreamModel(BaseCollection):
     host: Link[UserModel]
     channel_name:str
+    title:str=""
+    category:str=""
+    thumbnail:str="https://cdn.pixabay.com/photo/2017/06/13/12/54/profile-2398783_1280.png"
     livekit_token: str = Field(unique=True)
     is_premium: bool = False
     entry_fee: float = 0

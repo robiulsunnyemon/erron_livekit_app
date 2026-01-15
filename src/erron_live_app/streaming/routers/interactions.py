@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,status
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveLikeModel, LiveCommentModel, LiveRatingModel
+from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveLikeModel, LiveCommentModel, LiveRatingModel, \
+    LiveViewerModel
 
 router = APIRouter(prefix="/streaming/interactions", tags=["Interactions"])
 
@@ -68,3 +69,43 @@ async def rate_stream(session_id: str, rating: int, feedback: str = None, curren
     ).insert()
 
     return {"status": "rated"}
+
+
+
+
+
+
+
+@router.get("/all/comment", status_code=status.HTTP_200_OK)
+async def get_all_comment():
+    return await LiveCommentModel.find(fetch_links=True).to_list()
+
+@router.delete("/delete/all/comment", status_code=status.HTTP_200_OK)
+async def delete_all_comment():
+    await LiveCommentModel.delete_all()
+    return {"message": "successfully deleted all comments"}
+
+
+@router.get("/all/viewers", status_code=status.HTTP_200_OK)
+async def get_all_comment():
+    return await LiveViewerModel.find(fetch_links=True).to_list()
+
+@router.delete("/delete/all/viewers", status_code=status.HTTP_200_OK)
+async def delete_all_viewers():
+    await LiveViewerModel.delete_all()
+    return {"message": "successfully deleted all viewers"}
+
+@router.get("/all/likes",status_code=status.HTTP_200_OK)
+async def get_all_likes():
+    return await LiveLikeModel.find(fetch_links=True).to_list()
+
+@router.delete("/delete/all/likes", status_code=status.HTTP_200_OK)
+async def delete_all_likes():
+    await LiveLikeModel.delete_all()
+    return {"message": "successfully deleted all likes"}
+
+
+@router.delete("/delete/all/live",status_code=status.HTTP_200_OK)
+async def delete_all_livestream():
+    await LiveStreamModel.delete_all()
+    return {"message":"successfully deleted all livestream"}

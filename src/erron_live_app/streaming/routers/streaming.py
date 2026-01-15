@@ -76,7 +76,7 @@ async def livekit_webhook(request: Request):
 # --- Endpoints ---
 
 @router.post("/start-stream", status_code=status.HTTP_201_CREATED)
-async def start_stream(is_premium: bool, entry_fee: float, current_user: UserModel = Depends(get_current_user)):
+async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str, current_user: UserModel = Depends(get_current_user)):
     """হোস্টের জন্য লাইভ শুরু করার এন্ডপয়েন্ট"""
     if not LIVEKIT_API_KEY:
         raise HTTPException(status_code=500, detail="LiveKit credentials missing")
@@ -106,7 +106,10 @@ async def start_stream(is_premium: bool, entry_fee: float, current_user: UserMod
         livekit_token=token,
         is_premium=is_premium,
         entry_fee=entry_fee if is_premium else 0,
-        status="live"
+        status="live",
+        title=title,
+        category=category,
+        thumbnail=current_user.profile_image
     )
     await new_live.insert()
 
@@ -215,45 +218,25 @@ async def get_active_streams():
     return await LiveStreamModel.find(LiveStreamModel.status == "live", fetch_links=True).to_list()
 
 
+@router.get("/active-streams/{category_name}", response_model=List[LiveStreamModel])
+async def get_active_category_streams(category_name:str):
+    return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.category==category_name, fetch_links=True).to_list()
+
+
+
+@router.get("/active-streams/all/free", response_model=List[LiveStreamModel])
+async def get_active_free_streams():
+    return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==False, fetch_links=True).to_list()
+
+@router.get("/active/streams/all/premium", response_model=List[LiveStreamModel])
+async def get_active_premium_streams():
+    return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==True, fetch_links=True).to_list()
+
 
 @router.get("/all/streams", response_model=List[LiveStreamModel])
 async def get_active_streams():
     return await LiveStreamModel.find(fetch_links=True).to_list()
 
-
-@router.get("/all/comment", status_code=status.HTTP_200_OK)
-async def get_all_comment():
-    return await LiveCommentModel.find(fetch_links=True).to_list()
-
-@router.delete("/delete/all/comment", status_code=status.HTTP_200_OK)
-async def delete_all_comment():
-    await LiveCommentModel.delete_all()
-    return {"message": "successfully deleted all comments"}
-
-
-@router.get("/all/viewers", status_code=status.HTTP_200_OK)
-async def get_all_comment():
-    return await LiveViewerModel.find(fetch_links=True).to_list()
-
-@router.delete("/delete/all/viewers", status_code=status.HTTP_200_OK)
-async def delete_all_viewers():
-    await LiveViewerModel.delete_all()
-    return {"message": "successfully deleted all viewers"}
-
-@router.get("/all/likes",status_code=status.HTTP_200_OK)
-async def get_all_likes():
-    return await LiveLikeModel.find(fetch_links=True).to_list()
-
-@router.delete("/delete/all/likes", status_code=status.HTTP_200_OK)
-async def delete_all_likes():
-    await LiveLikeModel.delete_all()
-    return {"message": "successfully deleted all likes"}
-
-
-@router.delete("/delete/all/live",status_code=status.HTTP_200_OK)
-async def delete_all_livestream():
-    await LiveStreamModel.delete_all()
-    return {"message":"successfully deleted all livestream"}
 
 
 
