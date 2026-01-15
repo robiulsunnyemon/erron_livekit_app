@@ -12,7 +12,7 @@ from erron_live_app.finance.models.transaction import TransactionModel, Transact
 from erron_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
 
 load_dotenv()
-router = APIRouter(prefix="/streaming", tags=["Live Stream"])
+router = APIRouter(prefix="/streaming", tags=["Livestream"])
 
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
@@ -192,6 +192,22 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
     )
 
     return {"livekit_token": token, "room_name": db_live_stream.channel_name, "balance": current_user.coins}
+
+
+@router.post("/stop-stream/{session_id}")
+async def stop_stream(session_id: str, current_user: UserModel = Depends(get_current_user)):
+    live_session = await LiveStreamModel.get(session_id,fetch_links=True)
+
+    if not live_session or live_session.host.id != current_user.id:
+        raise HTTPException(status_code=403, detail="You are not eligible for stop this livestream")
+
+    live_session.status = "ended"
+    live_session.end_time = datetime.now(timezone.utc)
+    await live_session.save()
+
+    return {"message": "Stream ended successfully"}
+
+
 
 
 @router.get("/active-streams", response_model=List[LiveStreamModel])
