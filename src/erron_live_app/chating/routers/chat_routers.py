@@ -83,6 +83,21 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
         print(f"WebSocket Loop Error: {e}")
         manager.disconnect(user_id)
 
+@router.get("/active-users", response_model=List[UserModel])
+async def get_active_users(current_user: UserModel = Depends(get_current_user)):
+    """বর্তমানে চ্যাটে এক্টিভ থাকা ইউজারদের তালিকা"""
+    active_ids = list(manager.active_connections.keys())
+    
+    # বর্তমান ইউজারকে বাদ দিয়ে বাকিদের ডাটাবেস থেকে নিয়ে আসা
+    # UUID তে কনভার্ট করে Beanie ইন কুয়েরি ব্যবহার করা যায় অথবা লুপ চালানো যায়
+    users = []
+    for uid in active_ids:
+        if uid != str(current_user.id):
+            user = await UserModel.get(uuid.UUID(uid))
+            if user:
+                users.append(user)
+    return users
+
 @router.get("/history/{receiver_id}")
 async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, current_user: UserModel = Depends(get_current_user)):
     """নির্দিষ্ট ইউজারের সাথে চ্যাট হিস্ট্রি লোড করা"""

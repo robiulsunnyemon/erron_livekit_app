@@ -18,7 +18,6 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserModel:
     return await verify_token(token)
 
 async def verify_token(token: str) -> UserModel:
-    print(f"DEBUG: Verifying token: {token[:20]}...")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -28,28 +27,21 @@ async def verify_token(token: str) -> UserModel:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
-        print(f"DEBUG: Token decoded. user_id: {user_id}")
 
         if user_id is None:
-            print("DEBUG: user_id is None")
             raise credentials_exception
 
-    except JWTError as e:
-        print(f"DEBUG: JWT Decode Error: {e}")
+    except JWTError:
         raise credentials_exception
 
     user = await UserModel.get(user_id, fetch_links=True)
 
     if user is None:
-        print(f"DEBUG: User not found in DB for id: {user_id}")
         raise credentials_exception
 
-    print(f"DEBUG: User verified: {user.email}")
     return user
 
 async def get_ws_current_user(token: str = Query(None)) -> UserModel:
-    print(f"DEBUG: get_ws_current_user called with token: {token[:10] if token else 'None'}...")
     if token is None:
-        print("DEBUG: WebSocket token is missing")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token missing")
     return await verify_token(token)
