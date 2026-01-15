@@ -7,6 +7,7 @@ from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.streaming.models.streaming import LiveStreamModel,LiveViewerModel,LiveCommentModel,LiveLikeModel, LiveRatingModel
 from erron_live_app.finance.models.transaction import TransactionModel
 from erron_live_app.streaming.models.gifts import GiftLogModel
+from erron_live_app.chating.models.chat_model import ChatMessageModel
 
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
@@ -21,7 +22,8 @@ MODELS = [
     LiveLikeModel,
     LiveRatingModel,
     TransactionModel,
-    GiftLogModel
+    GiftLogModel,
+    ChatMessageModel
 ]
 
 
