@@ -20,7 +20,7 @@ async def like_stream(session_id: str, current_user: UserModel = Depends(get_cur
     stream.total_likes += 1
     await stream.save()
     
-    return {"status": "liked", "total_likes": stream.total_likes}
+    return {"user":current_user,"status": "liked", "total_likes": stream.total_likes}
 
 @router.post("/comment")
 async def comment_stream(session_id: str, content: str, current_user: UserModel = Depends(get_current_user)):
@@ -37,7 +37,10 @@ async def comment_stream(session_id: str, content: str, current_user: UserModel 
     stream.total_comments += 1
     await stream.save()
 
-    return {"status": "commented"}
+    return {
+        "user":current_user,
+        "content":content
+    }
 
 @router.post("/rate")
 async def rate_stream(session_id: str, rating: int, feedback: str = None, current_user: UserModel = Depends(get_current_user)):
