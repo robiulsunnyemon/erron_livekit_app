@@ -17,6 +17,7 @@ class TransactionReason(str, Enum):
     ENTRY_FEE_RECEIVED = "entry_fee_received"
     TOPUP = "topup"
     WITHDRAW = "withdraw"
+    HOST_STREAM_FEE_PAID = "host_stream_fee_paid"
 
 class TransactionModel(BaseCollection):
     user: Link[UserModel]

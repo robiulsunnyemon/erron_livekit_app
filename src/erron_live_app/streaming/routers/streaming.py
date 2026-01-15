@@ -71,6 +71,17 @@ async def start_stream(is_premium: bool, entry_fee: float, current_user: UserMod
     if not LIVEKIT_API_KEY:
         raise HTTPException(status_code=500, detail="LiveKit credentials missing")
 
+    # Deduct entry fee from host if premium
+    if is_premium and entry_fee > 0:
+        if current_user.coins < entry_fee:
+            raise HTTPException(
+                status_code=status.HTTP_402_PAYMENT_REQUIRED, 
+                detail=f"Insufficient coins to set entry fee. You need {entry_fee} coins."
+            )
+        
+        current_user.coins -= entry_fee
+        await current_user.save()
+
     channel_name = f"live_{current_user.id}_{int(time.time())}"
     token = create_livekit_token(
         identity=str(current_user.id),
@@ -89,6 +100,17 @@ async def start_stream(is_premium: bool, entry_fee: float, current_user: UserMod
     )
     await new_live.insert()
 
+    # Log Transaction for Host
+    if is_premium and entry_fee > 0:
+        await TransactionModel(
+            user=current_user.to_ref(),
+            amount=entry_fee,
+            transaction_type=TransactionType.DEBIT,
+            reason=TransactionReason.HOST_STREAM_FEE_PAID,
+            related_entity_id=str(new_live.id),
+            description=f"Paid fee to start premium stream with {entry_fee} entry fee"
+        ).insert()
+
     return {"live_id": str(new_live.id), "livekit_token": token, "channel_name": channel_name}
 
 
@@ -102,37 +124,54 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
 
     host_user = cast(UserModel, db_live_stream.host)
 
-    # প্রিমিয়াম চেক এবং কয়েন ট্রান্সফার
-    if db_live_stream.is_premium:
-        if current_user.coins < db_live_stream.entry_fee:
-            raise HTTPException(status_code=402, detail="Insufficient coins")
+    # Check if user has already joined this session
+    existing_viewer = await LiveViewerModel.find_one(
+        LiveViewerModel.session.id == db_live_stream.id,
+        LiveViewerModel.user.id == current_user.id
+    )
 
-        current_user.coins -= db_live_stream.entry_fee
-        host_user.coins += db_live_stream.entry_fee
-        db_live_stream.earn_coins += int(db_live_stream.entry_fee)
+    if not existing_viewer:
+        # প্রিমিয়াম চেক এবং কয়েন ট্রান্সফার (শুধু প্রথমবার জয়েন করলে)
+        if db_live_stream.is_premium and db_live_stream.entry_fee > 0:
+            if current_user.coins < db_live_stream.entry_fee:
+                raise HTTPException(status_code=402, detail="Insufficient coins")
 
-        await current_user.save()
-        await host_user.save()
+            current_user.coins -= db_live_stream.entry_fee
+            host_user.coins += db_live_stream.entry_fee
+            db_live_stream.earn_coins += int(db_live_stream.entry_fee)
 
-        # Log Transactions
-        # Debit for Viewer
-        await TransactionModel(
+            await current_user.save()
+            await host_user.save()
+
+            # Log Transactions
+            # Debit for Viewer
+            await TransactionModel(
+                user=current_user.to_ref(),
+                amount=db_live_stream.entry_fee,
+                transaction_type=TransactionType.DEBIT,
+                reason=TransactionReason.ENTRY_FEE_PAID,
+                related_entity_id=str(db_live_stream.id),
+                description=f"Paid entry fee for stream {db_live_stream.channel_name}"
+            ).insert()
+
+            # Credit for Host
+            await TransactionModel(
+                user=host_user.to_ref(),
+                amount=db_live_stream.entry_fee,
+                transaction_type=TransactionType.CREDIT,
+                reason=TransactionReason.ENTRY_FEE_RECEIVED,
+                related_entity_id=str(db_live_stream.id),
+                description=f"Received entry fee from {current_user.first_name}"
+            ).insert()
+
+        db_live_stream.total_views += 1
+        await db_live_stream.save()
+
+        # Mark user as joined in this session
+        await LiveViewerModel(
+            session=db_live_stream.to_ref(),
             user=current_user.to_ref(),
-            amount=db_live_stream.entry_fee,
-            transaction_type=TransactionType.DEBIT,
-            reason=TransactionReason.ENTRY_FEE_PAID,
-            related_entity_id=str(db_live_stream.id),
-            description=f"Paid entry fee for stream {db_live_stream.channel_name}"
-        ).insert()
-
-        # Credit for Host
-        await TransactionModel(
-            user=host_user.to_ref(),
-            amount=db_live_stream.entry_fee,
-            transaction_type=TransactionType.CREDIT,
-            reason=TransactionReason.ENTRY_FEE_RECEIVED,
-            related_entity_id=str(db_live_stream.id),
-            description=f"Received entry fee from {current_user.first_name}"
+            fee_paid=db_live_stream.entry_fee if db_live_stream.is_premium else 0
         ).insert()
 
     token = create_livekit_token(
@@ -141,15 +180,6 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
         room_name=db_live_stream.channel_name,
         can_publish=False
     )
-
-    db_live_stream.total_views += 1
-    await db_live_stream.save()
-
-    await LiveViewerModel(
-        session=db_live_stream.to_ref(),
-        user=current_user.to_ref(),
-        fee_paid=db_live_stream.entry_fee if db_live_stream.is_premium else 0
-    ).insert()
 
     return {"livekit_token": token, "room_name": db_live_stream.channel_name, "balance": current_user.coins}
 
