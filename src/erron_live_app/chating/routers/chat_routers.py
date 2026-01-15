@@ -4,7 +4,7 @@ import uuid
 from typing import List, Dict
 from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Request
-from erron_live_app.users.utils.get_current_user import get_current_user
+from erron_live_app.users.utils.get_current_user import get_current_user, get_ws_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.chating.models.chat_model import ChatMessageModel
 from beanie import Link
@@ -32,62 +32,56 @@ class ConnectionManager:
 
 manager = ConnectionManager()
 
-@router.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Depends(get_ws_current_user)):
+    user_id = str(current_user.id)
+    await manager.connect(user_id, websocket)
     try:
-        # Verify the user_id is a valid UUID
-        current_user_uuid = UUID(user_id)
-        
-        await manager.connect(user_id, websocket)
-        try:
-            while True:
-                data = await websocket.receive_text()
-                message_data = json.loads(data)
-                
-                receiver_id = message_data.get("receiver_id")
-                text = message_data.get("message")
-                image_url = message_data.get("image_url")
-
-                if not receiver_id:
-                    continue
-
-                # Save to Database
-                sender = await UserModel.get(current_user_uuid)
-                receiver = await UserModel.get(UUID(receiver_id))
-
-                if sender and receiver:
-                    chat_msg = ChatMessageModel(
-                        sender=sender.to_ref(),
-                        receiver=receiver.to_ref(),
-                        message=text,
-                        image_url=image_url
-                    )
-                    await chat_msg.insert()
-
-                    # Prepare payload for real-time delivery
-                    payload = {
-                        "id": str(chat_msg.id),
-                        "sender_id": user_id,
-                        "receiver_id": receiver_id,
-                        "message": text,
-                        "image_url": image_url,
-                        "created_at": chat_msg.created_at.isoformat()
-                    }
-
-                    # Send to receiver if online
-                    await manager.send_personal_message(payload, receiver_id)
-                    # Send back to sender for confirmation
-                    await manager.send_personal_message(payload, user_id)
-
-        except WebSocketDisconnect:
-            manager.disconnect(user_id)
-        except Exception as e:
-            print(f"WebSocket Loop Error: {e}")
-            manager.disconnect(user_id)
+        while True:
+            data = await websocket.receive_text()
+            message_data = json.loads(data)
             
+            receiver_id = message_data.get("receiver_id")
+            text = message_data.get("message")
+            image_url = message_data.get("image_url")
+
+            if not receiver_id:
+                continue
+
+            # Save to Database
+            # sender is current_user
+            receiver_uuid = UUID(receiver_id)
+            receiver = await UserModel.get(receiver_uuid)
+
+            if current_user and receiver:
+                chat_msg = ChatMessageModel(
+                    sender=current_user.to_ref(),
+                    receiver=receiver.to_ref(),
+                    message=text,
+                    image_url=image_url
+                )
+                await chat_msg.insert()
+
+                # Prepare payload for real-time delivery
+                payload = {
+                    "id": str(chat_msg.id),
+                    "sender_id": user_id,
+                    "receiver_id": receiver_id,
+                    "message": text,
+                    "image_url": image_url,
+                    "created_at": chat_msg.created_at.isoformat()
+                }
+
+                # Send to receiver if online
+                await manager.send_personal_message(payload, receiver_id)
+                # Send back to sender for confirmation
+                await manager.send_personal_message(payload, user_id)
+
+    except WebSocketDisconnect:
+        manager.disconnect(user_id)
     except Exception as e:
-        print(f"WebSocket Connect Error: {e}")
-        await websocket.close(code=1008)
+        print(f"WebSocket Loop Error: {e}")
+        manager.disconnect(user_id)
 
 @router.get("/history/{receiver_id}")
 async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, current_user: UserModel = Depends(get_current_user)):
