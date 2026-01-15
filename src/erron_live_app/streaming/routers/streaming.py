@@ -199,6 +199,12 @@ async def get_active_streams():
     return await LiveStreamModel.find(LiveStreamModel.status == "live", fetch_links=True).to_list()
 
 
+
+@router.get("/all/streams", response_model=List[LiveStreamModel])
+async def get_active_streams():
+    return await LiveStreamModel.find(fetch_links=True).to_list()
+
+
 @router.get("/all/comment", status_code=status.HTTP_200_OK)
 async def get_all_comment():
     return await LiveCommentModel.find(fetch_links=True).to_list()
