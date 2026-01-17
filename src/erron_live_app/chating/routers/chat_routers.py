@@ -40,41 +40,75 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
             data = await websocket.receive_text()
             message_data = json.loads(data)
             
+            msg_type = message_data.get("type", "message")
             receiver_id = message_data.get("receiver_id")
-            text = message_data.get("message")
-            image_url = message_data.get("image_url")
-
+            
             if not receiver_id:
                 continue
 
-            # Save to Database
-            # sender is current_user
-            receiver_uuid = UUID(receiver_id)
-            receiver = await UserModel.get(receiver_uuid)
+            if msg_type == "message":
+                text = message_data.get("message")
+                image_url = message_data.get("image_url")
+                replied_to_id = message_data.get("replied_to_id")
 
-            if current_user and receiver:
-                chat_msg = ChatMessageModel(
-                    sender=current_user.to_ref(),
-                    receiver=receiver.to_ref(),
-                    message=text,
-                    image_url=image_url
-                )
-                await chat_msg.insert()
+                # Save to Database
+                receiver_uuid = UUID(receiver_id)
+                receiver = await UserModel.get(receiver_uuid)
 
-                # Prepare payload for real-time delivery
-                payload = {
-                    "id": str(chat_msg.id),
-                    "sender_id": user_id,
-                    "receiver_id": receiver_id,
-                    "message": text,
-                    "image_url": image_url,
-                    "created_at": chat_msg.created_at.isoformat()
-                }
+                if current_user and receiver:
+                    chat_msg = ChatMessageModel(
+                        sender=current_user.to_ref(),
+                        receiver=receiver.to_ref(),
+                        message=text,
+                        image_url=image_url,
+                        replied_to_id=replied_to_id if replied_to_id else None
+                    )
+                    await chat_msg.insert()
 
-                # Send to receiver if online
-                await manager.send_personal_message(payload, receiver_id)
-                # Send back to sender for confirmation
-                await manager.send_personal_message(payload, user_id)
+                    # Prepare payload for real-time delivery
+                    payload = {
+                        "type": "message",
+                        "id": str(chat_msg.id),
+                        "sender_id": user_id,
+                        "receiver_id": receiver_id,
+                        "message": text,
+                        "image_url": image_url,
+                        "replied_to_id": str(chat_msg.replied_to_id) if chat_msg.replied_to_id else None,
+                        "created_at": chat_msg.created_at.isoformat(),
+                        "reactions": []
+                    }
+
+                    # Send to receiver if online
+                    await manager.send_personal_message(payload, receiver_id)
+                    # Send back to sender for confirmation
+                    await manager.send_personal_message(payload, user_id)
+
+            elif msg_type == "reaction":
+                message_id = message_data.get("message_id")
+                emoji = message_data.get("emoji")
+                
+                if not message_id or not emoji:
+                    continue
+                
+                chat_msg = await ChatMessageModel.get(message_id)
+                if chat_msg:
+                    # Remove existing reaction from this user if any
+                    chat_msg.reactions = [r for r in chat_msg.reactions if r.user_id != user_id]
+                    # Add new reaction
+                    from erron_live_app.chating.models.chat_model import Reaction
+                    chat_msg.reactions.append(Reaction(user_id=user_id, emoji=emoji))
+                    await chat_msg.save()
+
+                    payload = {
+                        "type": "reaction",
+                        "message_id": message_id,
+                        "user_id": user_id,
+                        "emoji": emoji,
+                        "receiver_id": receiver_id # To identify which room to broadcast in
+                    }
+                    
+                    await manager.send_personal_message(payload, receiver_id)
+                    await manager.send_personal_message(payload, user_id)
 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
