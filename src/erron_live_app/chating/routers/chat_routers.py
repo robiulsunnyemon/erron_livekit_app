@@ -3,7 +3,7 @@ import os
 import uuid
 from typing import List, Dict
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Request
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Request,status
 from erron_live_app.users.utils.get_current_user import get_current_user, get_ws_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.chating.models.chat_model import ChatMessageModel
@@ -219,3 +219,9 @@ async def upload_chat_image(request: Request, file: UploadFile = File(...), curr
 
     image_url = f"/uploads/{file_name}"
     return {"image_url": image_url}
+
+
+@router.delete("all_message",status_code=status.HTTP_200_OK)
+async def delete_message():
+    await ChatMessageModel.delete_all()
+    return {"message":"successfully deleted all message"}
