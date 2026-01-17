@@ -199,5 +199,5 @@ async def upload_chat_image(request: Request, file: UploadFile = File(...), curr
 
     # Return the full accessible URL
     base_url = str(request.base_url)
-    image_url = f"{base_url}uploads/{file_name}"
+    image_url = f"/uploads/{file_name}"
     return {"image_url": image_url}
