@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisco
 from erron_live_app.users.utils.get_current_user import get_current_user, get_ws_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.chating.models.chat_model import ChatMessageModel
-from beanie import Link
 from beanie.operators import Or, And
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -116,6 +115,77 @@ async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, cur
     
     # Return messages in chronological order for the UI
     return messages[::-1]
+
+@router.get("/conversations")
+async def get_conversations(current_user: UserModel = Depends(get_current_user)):
+    """ইউজারের সব চ্যাট হিস্ট্রি এবং লেটেস্ট মেসেজসহ লিস্ট"""
+    pipeline = [
+        {
+            "$match": {
+                "$or": [
+                    {"sender.$id": current_user.id},
+                    {"receiver.$id": current_user.id}
+                ]
+            }
+        },
+        {"$sort": {"created_at": -1}},
+        {
+            "$group": {
+                "_id": {
+                    "$cond": [
+                        {"$eq": ["$sender.$id", current_user.id]},
+                        "$receiver.$id",
+                        "$sender.$id"
+                    ]
+                },
+                "last_message": {"$first": "$$ROOT"},
+                "unread_count": {
+                    "$sum": {
+                        "$cond": [
+                            {"$and": [
+                                {"$eq": ["$receiver.$id", current_user.id]},
+                                {"$eq": ["$is_read", False]}
+                            ]},
+                            1,
+                            0
+                        ]
+                    }
+                }
+            }
+        },
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "user_info"
+            }
+        },
+        {"$unwind": "$user_info"},
+        {"$sort": {"last_message.created_at": -1}}
+    ]
+    
+    results = await ChatMessageModel.aggregate(pipeline).to_list()
+    
+    conversations = []
+    for res in results:
+        user_info = res["user_info"]
+        last_msg = res["last_message"]
+        conversations.append({
+            "other_user": {
+                "id": str(user_info["_id"]),
+                "first_name": user_info.get("first_name"),
+                "last_name": user_info.get("last_name"),
+                "profile_image": user_info.get("profile_image"),
+                "is_online": user_info.get("is_online", False)
+            },
+            "last_message": last_msg.get("message"),
+            "last_image_url": last_msg.get("image_url"),
+            "created_at": last_msg.get("created_at"),
+            "unread_count": res["unread_count"]
+        })
+            
+    return conversations
 
 @router.post("/upload-image")
 async def upload_chat_image(request: Request, file: UploadFile = File(...), current_user: UserModel = Depends(get_current_user)):
