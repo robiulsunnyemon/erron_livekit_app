@@ -187,6 +187,24 @@ async def get_conversations(current_user: UserModel = Depends(get_current_user))
             
     return conversations
 
+@router.put("/mark-read/{sender_id}")
+async def mark_messages_as_read(sender_id: str, current_user: UserModel = Depends(get_current_user)):
+    """নির্দিষ্ট ইউজারের সব মেসেজ 'read' হিসেবে মার্ক করা"""
+    try:
+        sender_uuid = UUID(sender_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid sender ID")
+
+    await ChatMessageModel.find(
+        And(
+            ChatMessageModel.sender.id == sender_uuid,
+            ChatMessageModel.receiver.id == current_user.id,
+            ChatMessageModel.is_read == False
+        )
+    ).set({ChatMessageModel.is_read: True})
+    
+    return {"status": "success"}
+
 @router.post("/upload-image")
 async def upload_chat_image(request: Request, file: UploadFile = File(...), current_user: UserModel = Depends(get_current_user)):
     """চ্যাটে পাঠানোর জন্য ছবি আপলোড এন্ডপয়েন্ট"""
@@ -198,6 +216,6 @@ async def upload_chat_image(request: Request, file: UploadFile = File(...), curr
         buffer.write(await file.read())
 
     # Return the full accessible URL
-    base_url = str(request.base_url)
+
     image_url = f"/uploads/{file_name}"
     return {"image_url": image_url}
