@@ -22,9 +22,20 @@ async def get_all_users(skip: int = 0, limit: int = 20):
     return users
 
 
-
-
-
+@user_router.get("/search", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
+async def search_users(query: str, skip: int = 0, limit: int = 20):
+    """
+    Search users by name or email.
+    """
+    search_filter = {
+        "$or": [
+            {"first_name": {"$regex": query, "$options": "i"}},
+            {"last_name": {"$regex": query, "$options": "i"}},
+            {"email": {"$regex": query, "$options": "i"}}
+        ]
+    }
+    users = await UserModel.find(search_filter).skip(skip).limit(limit).to_list()
+    return users
 
 
 @user_router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
