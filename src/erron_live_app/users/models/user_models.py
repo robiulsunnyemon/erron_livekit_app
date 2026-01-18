@@ -27,6 +27,7 @@ class UserModel(BaseCollection):
     following_count: int = Field(default=0)
     followers_count: int = Field(default=0)
     total_likes: int = Field(default=0)
+    shady:float = Field(default=0)
 
     account_status: AccountStatus = Field(default=AccountStatus.ACTIVE)
     otp: Optional[str] = None

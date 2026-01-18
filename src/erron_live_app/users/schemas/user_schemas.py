@@ -34,6 +34,7 @@ class UserResponse(BaseResponse):
 
     is_verified: bool
     profile_image: Optional[str]
+    shady: Optional[float]
     auth_provider: str
     created_at: datetime
     updated_at: datetime
