@@ -2,8 +2,9 @@
 from fastapi import APIRouter, HTTPException, status,Depends
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.users.schemas.user_schemas import UserResponse
+from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse
 from erron_live_app.users.utils.get_current_user import get_current_user
+from erron_live_app.streaming.models.streaming import LiveStreamModel
 
 # Define the router for User Management
 user_router = APIRouter(prefix="/users", tags=["Users"])
@@ -55,9 +56,17 @@ async def get_user(user_id: str):
     return user
 
 
-@user_router.get("/users/my_profile", response_model=UserModel)
+@user_router.get("/users/my_profile", response_model=ProfileResponse)
 async def my_profile(current_user: UserModel = Depends(get_current_user)):
-    return current_user
+    # Fetch all past streams by this user (including ones with status 'ended' or similar)
+    # Actually, usually you want all streams they've done.
+    past_streams = await LiveStreamModel.find(LiveStreamModel.host.id == current_user.id).sort("-created_at").to_list()
+    
+    # We return a dict that matches ProfileResponse
+    return {
+        **current_user.model_dump(),
+        "past_streams": past_streams
+    }
 
 
 

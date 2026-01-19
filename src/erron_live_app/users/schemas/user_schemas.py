@@ -46,6 +46,23 @@ class UserResponse(BaseResponse):
         from_attributes = True
 
 
+class LiveStreamSimpleResponse(BaseResponse):
+    title: str = ""
+    category: str = ""
+    thumbnail: str = ""
+    created_at: datetime
+    total_views: int = 0
+    total_likes: int = 0
+    status: str
+
+    class Config:
+        from_attributes = True
+
+
+class ProfileResponse(UserResponse):
+    past_streams: List[LiveStreamSimpleResponse] = []
+
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
