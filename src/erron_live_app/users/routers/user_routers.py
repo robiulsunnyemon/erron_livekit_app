@@ -5,10 +5,14 @@ import shutil
 import os
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse
+from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.streaming.models.streaming import LiveStreamModel
 from erron_live_app.users.models.kyc_models import KYCModel
+from erron_live_app.users.models.moderator_models import ModeratorModel
+from typing import Union
+from datetime import datetime
+
 
 # Define the router for User Management
 user_router = APIRouter(prefix="/users", tags=["Users"])
@@ -43,6 +47,89 @@ async def search_users(query: str, skip: int = 0, limit: int = 20):
     return users
 
 
+@user_router.get("/my_profile", response_model=Union[ProfileResponse, ModeratorProfileResponse])
+async def my_profile(current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)):
+    if isinstance(current_user, ModeratorModel):
+        return current_user
+
+    # Fetch all past streams by this user (including ones with status 'ended' or similar)
+    past_streams = await LiveStreamModel.find(LiveStreamModel.host.id == current_user.id).sort("-created_at").to_list()
+    
+    # We return a dict that matches ProfileResponse for regular users
+    return {
+        **current_user.model_dump(),
+        "past_streams": past_streams
+    }
+
+
+@user_router.patch("/my_profile/update", response_model=UserResponse)
+async def update_my_profile(
+    data: ProfileUpdateRequest,
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Update the current user's profile information.
+    """
+    if not isinstance(current_user, UserModel):
+         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only regular users can update their profile here")
+
+    update_dict = data.model_dump(exclude_unset=True)
+    
+    if not update_dict:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No fields provided to update")
+
+    # Update user object
+    for key, value in update_dict.items():
+        setattr(current_user, key, value)
+    
+    await current_user.save()
+    return current_user
+
+
+@user_router.post("/my_profile/upload-profile-image", status_code=status.HTTP_200_OK)
+async def upload_profile_image(
+    image: UploadFile = File(...),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Upload a profile image and return the URL.
+    """
+    profile_dir = os.path.join("uploads", "profiles")
+    if not os.path.exists(profile_dir):
+        os.makedirs(profile_dir)
+
+    filename = f"profile_{current_user.id}_{datetime.now().timestamp()}_{image.filename}"
+    file_path = os.path.join(profile_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+    
+    image_url = f"/uploads/profiles/{filename}"
+    return {"image_url": image_url}
+
+
+@user_router.post("/my_profile/upload-cover-image", status_code=status.HTTP_200_OK)
+async def upload_cover_image(
+    image: UploadFile = File(...),
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Upload a cover image and return the URL.
+    """
+    cover_dir = os.path.join("uploads", "covers")
+    if not os.path.exists(cover_dir):
+        os.makedirs(cover_dir)
+
+    filename = f"cover_{current_user.id}_{datetime.now().timestamp()}_{image.filename}"
+    file_path = os.path.join(cover_dir, filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(image.file, buffer)
+    
+    image_url = f"/uploads/covers/{filename}"
+    return {"image_url": image_url}
+
+
 @user_router.get("/{user_id}", response_model=UserResponse, status_code=status.HTTP_200_OK)
 async def get_user(user_id: str):
     """
@@ -58,19 +145,6 @@ async def get_user(user_id: str):
             detail="User not found"
         )
     return user
-
-
-@user_router.get("/users/my_profile", response_model=ProfileResponse)
-async def my_profile(current_user: UserModel = Depends(get_current_user)):
-    # Fetch all past streams by this user (including ones with status 'ended' or similar)
-    # Actually, usually you want all streams they've done.
-    past_streams = await LiveStreamModel.find(LiveStreamModel.host.id == current_user.id).sort("-created_at").to_list()
-    
-    # We return a dict that matches ProfileResponse
-    return {
-        **current_user.model_dump(),
-        "past_streams": past_streams
-    }
 
 
 @user_router.post("/kyc/submit", status_code=status.HTTP_201_CREATED)

@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 from typing import Optional
 from erron_live_app.core.base.base import BaseCollection
 from erron_live_app.users.models.user_models import UserModel
+from erron_live_app.users.models.moderator_models import ModeratorModel
 
 class LiveStreamModel(BaseCollection):
     host: Link[UserModel]
@@ -86,10 +87,23 @@ class LiveRatingModel(BaseCollection):
 
 class LiveStreamReportModel(BaseCollection):
     session: Link[LiveStreamModel]
-    reporter: Link[UserModel]
+    reporter_user: Optional[Link[UserModel]] = None
+    reporter_moderator: Optional[Link[ModeratorModel]] = None
     category: str  # e.g., Nudity, Violence, Scam, Harassment
     description: Optional[str] = None
+    status: str = "PENDING"  # PENDING, RESOLVED, DISMISSED
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     class Settings:
         name = "live_reports"
+
+
+class LiveStreamReportReviewModel(BaseCollection):
+    report: Link[LiveStreamReportModel]
+    moderator: Link[ModeratorModel]
+    note: Optional[str] = None
+    action: str  # DISMISS, INACTIVE (Warn), SUSPEND (Ban)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    class Settings:
+        name = "live_report_reviews"

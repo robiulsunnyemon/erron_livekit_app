@@ -4,11 +4,13 @@ from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.streaming.models.streaming import LiveStreamModel,LiveViewerModel,LiveCommentModel,LiveLikeModel, LiveRatingModel, LiveStreamReportModel
+from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveViewerModel, LiveCommentModel, LiveLikeModel, \
+    LiveRatingModel, LiveStreamReportModel, LiveStreamReportReviewModel
 from erron_live_app.finance.models.transaction import TransactionModel
 from erron_live_app.streaming.models.gifts import GiftLogModel
 from erron_live_app.chating.models.chat_model import ChatMessageModel
 from erron_live_app.users.models.kyc_models import KYCModel
+from erron_live_app.users.models.moderator_models import ModeratorModel
 
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
@@ -26,7 +28,9 @@ MODELS = [
     GiftLogModel,
     ChatMessageModel,
     KYCModel,
-    LiveStreamReportModel
+    LiveStreamReportModel,
+    LiveStreamReportReviewModel,
+    ModeratorModel
 ]
 
 

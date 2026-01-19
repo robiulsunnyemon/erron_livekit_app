@@ -33,6 +33,7 @@ class UserModel(BaseCollection):
     otp: Optional[str] = None
     role: Optional[UserRole] = Field(default=UserRole.USER)
     profile_image: Optional[str] = Field(default="https://cdn.pixabay.com/photo/2017/06/13/12/54/profile-2398783_1280.png")
+    cover_image: Optional[str] = Field(default=None)
     auth_provider: str =  Field(default="email")
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
