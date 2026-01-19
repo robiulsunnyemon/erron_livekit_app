@@ -1,5 +1,6 @@
 
 from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile
+from uuid import UUID
 import shutil
 import os
 from typing import List
@@ -124,6 +125,14 @@ async def kyc_status(current_user: UserModel = Depends(get_current_user)):
     kyc = await KYCModel.find_one(KYCModel.user.id == current_user.id)
     if not kyc:
         return {"status": "none"}
+    return kyc
+
+
+@user_router.get("/kyc/{user_id}", status_code=status.HTTP_200_OK)
+async def get_kyc_by_user_id(user_id: UUID):
+    kyc = await KYCModel.find_one(KYCModel.user.id == user_id, fetch_links=True)
+    if not kyc:
+        raise HTTPException(status_code=404, detail="KYC not found for this user")
     return kyc
 
 
