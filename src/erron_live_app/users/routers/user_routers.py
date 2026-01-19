@@ -1,10 +1,13 @@
 
-from fastapi import APIRouter, HTTPException, status,Depends
+from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile
+import shutil
+import os
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.streaming.models.streaming import LiveStreamModel
+from erron_live_app.users.models.kyc_models import KYCModel
 
 # Define the router for User Management
 user_router = APIRouter(prefix="/users", tags=["Users"])
@@ -67,6 +70,61 @@ async def my_profile(current_user: UserModel = Depends(get_current_user)):
         **current_user.model_dump(),
         "past_streams": past_streams
     }
+
+
+@user_router.post("/kyc/submit", status_code=status.HTTP_201_CREATED)
+async def kyc_submit(
+    id_front: UploadFile = File(...),
+    id_back: UploadFile = File(...),
+    current_user: UserModel = Depends(get_current_user)
+):
+    # Create KYC directory if not exists
+    kyc_dir = os.path.join("uploads", "kyc")
+    if not os.path.exists(kyc_dir):
+        os.makedirs(kyc_dir)
+
+    # Save Front ID
+    front_filename = f"front_{current_user.id}_{id_front.filename}"
+    front_path = os.path.join(kyc_dir, front_filename)
+    with open(front_path, "wb") as buffer:
+        shutil.copyfileobj(id_front.file, buffer)
+
+    # Save Back ID
+    back_filename = f"back_{current_user.id}_{id_back.filename}"
+    back_path = os.path.join(kyc_dir, back_filename)
+    with open(back_path, "wb") as buffer:
+        shutil.copyfileobj(id_back.file, buffer)
+
+    # Create model entry
+    # Note: Using absolute URL or relative web path. Frontend likely needs web path.
+    front_url = f"/uploads/kyc/{front_filename}"
+    back_url = f"/uploads/kyc/{back_filename}"
+
+    # Check if a KYC already exists for this user
+    existing_kyc = await KYCModel.find_one(KYCModel.user.id == current_user.id)
+    if existing_kyc:
+        existing_kyc.id_front = front_url
+        existing_kyc.id_back = back_url
+        existing_kyc.status = "pending"
+        await existing_kyc.save()
+        return {"message": "KYC updated successfully", "status": "pending"}
+    
+    new_kyc = KYCModel(
+        user=current_user.to_ref(),
+        id_front=front_url,
+        id_back=back_url
+    )
+    await new_kyc.insert()
+
+    return {"message": "KYC submitted successfully", "status": "pending"}
+
+
+@user_router.get("/kyc/view", status_code=status.HTTP_200_OK)
+async def kyc_status(current_user: UserModel = Depends(get_current_user)):
+    kyc = await KYCModel.find_one(KYCModel.user.id == current_user.id)
+    if not kyc:
+        return {"status": "none"}
+    return kyc
 
 
 
