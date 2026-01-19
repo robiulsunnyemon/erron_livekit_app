@@ -69,7 +69,7 @@ async def report_stream(
 
 @router.get("/report",status_code=status.HTTP_200_OK)
 async def get_all_report():
-    reports=await LiveStreamReportModel.find_all().to_list()
+    reports=await LiveStreamReportModel.find(fetch_links=True).to_list()
     return reports
 
 
