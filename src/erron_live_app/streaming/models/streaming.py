@@ -82,3 +82,14 @@ class LiveRatingModel(BaseCollection):
 
     class Settings:
         name = "live_ratings"
+
+
+class LiveStreamReportModel(BaseCollection):
+    session: Link[LiveStreamModel]
+    reporter: Link[UserModel]
+    category: str  # e.g., Nudity, Violence, Scam, Harassment
+    description: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    class Settings:
+        name = "live_reports"

@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException,status
+from watchfiles import awatch
+
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveLikeModel, LiveCommentModel, LiveRatingModel, \
-    LiveViewerModel
+    LiveViewerModel, LiveStreamReportModel
 
 router = APIRouter(prefix="/streaming/interactions", tags=["Interactions"])
 
@@ -23,7 +25,7 @@ async def like_stream(session_id: str, current_user: UserModel = Depends(get_cur
     
     return {"user":current_user,"status": "liked", "total_likes": stream.total_likes}
 
-@router.post("/comment")
+@router.post("/comment",status_code=status.HTTP_201_CREATED)
 async def comment_stream(session_id: str, content: str, current_user: UserModel = Depends(get_current_user)):
     stream = await LiveStreamModel.get(session_id)
     if not stream:
@@ -43,34 +45,32 @@ async def comment_stream(session_id: str, content: str, current_user: UserModel 
         "content":content
     }
 
-@router.post("/rate")
-async def rate_stream(session_id: str, rating: int, feedback: str = None, current_user: UserModel = Depends(get_current_user)):
-    if rating < 1 or rating > 5:
-        raise HTTPException(status_code=400, detail="Rating must be between 1 and 5")
 
+
+@router.post("/report",status_code=status.HTTP_201_CREATED)
+async def report_stream(
+    session_id: str, 
+    category: str, 
+    description: str = None, 
+    current_user: UserModel = Depends(get_current_user)
+):
     stream = await LiveStreamModel.get(session_id)
     if not stream:
-        raise HTTPException(status_code=404, detail="Stream not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Stream not found")
 
-    # Check if already rated
-    existing_rating = await LiveRatingModel.find_one(
-        LiveRatingModel.session.id == stream.id,
-        LiveRatingModel.user.id == current_user.id
-    )
-    
-    if existing_rating:
-        raise HTTPException(status_code=400, detail="You have already rated this stream")
-
-    await LiveRatingModel(
+    await LiveStreamReportModel(
         session=stream.to_ref(),
-        user=current_user.to_ref(),
-        rating=rating,
-        feedback=feedback
+        reporter=current_user.to_ref(),
+        category=category,
+        description=description
     ).insert()
 
-    return {"status": "rated"}
+    return {"status": "reported"}
 
-
+@router.get("/report",status_code=status.HTTP_200_OK)
+async def get_all_report():
+    reports=await LiveStreamReportModel.find_all().to_list()
+    return reports
 
 
 
