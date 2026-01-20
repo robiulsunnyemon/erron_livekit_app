@@ -13,7 +13,7 @@ class UserModel(BaseCollection):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     email: EmailStr
-    coins:float=50
+    coins:float=50.0
     phone_number: Optional[str] =None
     password: Optional[str] = None
     is_verified: bool = False
@@ -27,7 +27,7 @@ class UserModel(BaseCollection):
     following_count: int = Field(default=0)
     followers_count: int = Field(default=0)
     total_likes: int = Field(default=0)
-    shady:float = Field(default=0)
+    shady:float = Field(default=0.0)
 
     account_status: AccountStatus = Field(default=AccountStatus.ACTIVE)
     otp: Optional[str] = None
