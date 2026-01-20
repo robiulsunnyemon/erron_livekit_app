@@ -102,6 +102,7 @@ class ModeratorCreate(BaseModel):
     email: EmailStr
     username: str
     password: str
+    is_active: bool= True
     can_view_reports: bool = False
     can_review_appeals: bool = False
     can_access_live_monitor: bool = False
