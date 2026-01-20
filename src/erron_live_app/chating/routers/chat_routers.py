@@ -9,6 +9,7 @@ from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.schemas.user_schemas import UserResponse
 from erron_live_app.chating.models.chat_model import ChatMessageModel
 from erron_live_app.chating.schemas.chat import ChatMessageResponse, ConversationResponse
+from erron_live_app.users.utils.populate_kyc import populate_user_kyc
 from beanie.operators import Or, And
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -149,8 +150,20 @@ async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, cur
         fetch_links=True
     ).sort(-ChatMessageModel.created_at).skip(skip).limit(limit).to_list()
     
+    # Populate KYC for sender and receiver
+    messages_with_kyc = []
+    for message in messages:
+        msg_dict = message.model_dump()
+        if message.sender:
+            sender_with_kyc = await populate_user_kyc(message.sender)
+            msg_dict["sender"] = sender_with_kyc
+        if message.receiver:
+            receiver_with_kyc = await populate_user_kyc(message.receiver)
+            msg_dict["receiver"] = receiver_with_kyc
+        messages_with_kyc.append(msg_dict)
+    
     # Return messages in chronological order for the UI
-    return messages[::-1]
+    return messages_with_kyc[::-1]
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def get_conversations(current_user: UserModel = Depends(get_current_user)):

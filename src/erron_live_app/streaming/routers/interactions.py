@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ReportReviewRequest, ReportReviewResponse
 from erron_live_app.streaming.schemas.streaming import LiveStreamReportResponse
+from erron_live_app.users.utils.populate_kyc import populate_user_kyc
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
@@ -87,7 +88,27 @@ async def get_all_report(status: Optional[str] = None):
         query = {"status": status}
     
     reports = await LiveStreamReportModel.find(query, fetch_links=True).to_list()
-    return reports
+    
+    # Populate KYC for reporter users and session hosts
+    reports_with_kyc = []
+    for report in reports:
+        report_dict = report.model_dump()
+        
+        # Populate KYC for reporter_user if exists
+        if report.reporter_user:
+            user_with_kyc = await populate_user_kyc(report.reporter_user)
+            report_dict["reporter_user"] = user_with_kyc
+        
+        # Populate KYC for session host if exists
+        if report.session and report.session.host:
+            host_with_kyc = await populate_user_kyc(report.session.host)
+            session_dict = report.session.model_dump()
+            session_dict["host"] = host_with_kyc
+            report_dict["session"] = session_dict
+        
+        reports_with_kyc.append(report_dict)
+    
+    return reports_with_kyc
 
 
 @router.post("/report/{report_id}/review", response_model=ReportReviewResponse)

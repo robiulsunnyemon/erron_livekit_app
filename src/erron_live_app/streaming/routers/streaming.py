@@ -1,16 +1,19 @@
 import os
 import time
 from datetime import datetime, timezone
-from typing import cast, List
+from typing import cast, List, Union
 from fastapi import APIRouter, status, HTTPException, Depends, Request
 from livekit import api
 from dotenv import load_dotenv
 from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveViewerModel
 from erron_live_app.users.models.user_models import UserModel
+from erron_live_app.users.models.moderator_models import ModeratorModel
+from erron_live_app.users.utils.user_role import UserRole
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
 from erron_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
 from erron_live_app.streaming.schemas.streaming import LiveStreamResponse
+from erron_live_app.users.utils.populate_kyc import populate_user_kyc
 
 load_dotenv()
 router = APIRouter(prefix="/streaming", tags=["Livestream"])
@@ -199,13 +202,43 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
 
 
 @router.post("/stop/{session_id}")
-async def stop_stream(session_id: str, current_user: UserModel = Depends(get_current_user)):
-    live_session = await LiveStreamModel.get(session_id,fetch_links=True)
+async def stop_stream(session_id: str, current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)):
+    live_session = await LiveStreamModel.get(session_id, fetch_links=True)
 
-    if not live_session or live_session.host.id != current_user.id:
-        raise HTTPException(status_code=403, detail="You are not eligible for stop this livestream")
+    if not live_session:
+        raise HTTPException(status_code=404, detail="Live stream not found")
+    
+    # Check permissions: Host, Admin, or Moderator
+    is_host = isinstance(current_user, UserModel) and live_session.host.id == current_user.id
+    is_admin = isinstance(current_user, UserModel) and current_user.role == UserRole.ADMIN
+    is_moderator = isinstance(current_user, ModeratorModel)
+    
+    if not (is_host or is_admin or is_moderator):
+        raise HTTPException(status_code=403, detail="You are not authorized to stop this livestream")
 
     live_session.status = "ended"
+    live_session.end_time = datetime.now(timezone.utc)
+    await live_session.save()
+
+    return {"message": "Stream ended successfully"}
+
+
+@router.put("/resume/{session_id}")
+async def resume_stream(session_id: str, current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)):
+    live_session = await LiveStreamModel.get(session_id, fetch_links=True)
+
+    if not live_session:
+        raise HTTPException(status_code=404, detail="Live stream not found")
+
+    # Check permissions: Host, Admin, or Moderator
+    is_host = isinstance(current_user, UserModel) and live_session.host.id == current_user.id
+    is_admin = isinstance(current_user, UserModel) and current_user.role == UserRole.ADMIN
+    is_moderator = isinstance(current_user, ModeratorModel)
+
+    if not (is_host or is_admin or is_moderator):
+        raise HTTPException(status_code=403, detail="You are not authorized to stop this livestream")
+
+    live_session.status = "live"
     live_session.end_time = datetime.now(timezone.utc)
     await live_session.save()
 
@@ -216,27 +249,82 @@ async def stop_stream(session_id: str, current_user: UserModel = Depends(get_cur
 
 @router.get("/active", response_model=List[LiveStreamResponse])
 async def get_active_streams():
-    return await LiveStreamModel.find(LiveStreamModel.status == "live", fetch_links=True).to_list()
+    streams = await LiveStreamModel.find(LiveStreamModel.status == "live", fetch_links=True).sort("-created_at").to_list()
+    
+    # Populate KYC for each host
+    streams_with_kyc = []
+    for stream in streams:
+        stream_dict = stream.model_dump()
+        if stream.host:
+            host_with_kyc = await populate_user_kyc(stream.host)
+            stream_dict["host"] = host_with_kyc
+        streams_with_kyc.append(stream_dict)
+    
+    return streams_with_kyc
 
 
 @router.get("/active/{category_name}", response_model=List[LiveStreamResponse])
 async def get_active_category_streams(category_name:str):
-    return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.category==category_name, fetch_links=True).to_list()
+    streams = await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.category==category_name, fetch_links=True).to_list()
+    
+    # Populate KYC for each host
+    streams_with_kyc = []
+    for stream in streams:
+        stream_dict = stream.model_dump()
+        if stream.host:
+            host_with_kyc = await populate_user_kyc(stream.host)
+            stream_dict["host"] = host_with_kyc
+        streams_with_kyc.append(stream_dict)
+    
+    return streams_with_kyc
 
 
 
 @router.get("/active/all/free", response_model=List[LiveStreamResponse])
 async def get_active_free_streams():
-    return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==False, fetch_links=True).to_list()
+    streams = await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==False, fetch_links=True).to_list()
+    
+    # Populate KYC for each host
+    streams_with_kyc = []
+    for stream in streams:
+        stream_dict = stream.model_dump()
+        if stream.host:
+            host_with_kyc = await populate_user_kyc(stream.host)
+            stream_dict["host"] = host_with_kyc
+        streams_with_kyc.append(stream_dict)
+    
+    return streams_with_kyc
 
 @router.get("/active/streams/all/premium", response_model=List[LiveStreamResponse])
 async def get_active_premium_streams():
-    return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==True, fetch_links=True).to_list()
+    streams = await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==True, fetch_links=True).to_list()
+    
+    # Populate KYC for each host
+    streams_with_kyc = []
+    for stream in streams:
+        stream_dict = stream.model_dump()
+        if stream.host:
+            host_with_kyc = await populate_user_kyc(stream.host)
+            stream_dict["host"] = host_with_kyc
+        streams_with_kyc.append(stream_dict)
+    
+    return streams_with_kyc
 
 
 @router.get("/all/streams", response_model=List[LiveStreamResponse])
 async def get_active_streams():
-    return await LiveStreamModel.find(fetch_links=True).to_list()
+    streams = await LiveStreamModel.find(fetch_links=True).to_list()
+    
+    # Populate KYC for each host
+    streams_with_kyc = []
+    for stream in streams:
+        stream_dict = stream.model_dump()
+        if stream.host:
+            host_with_kyc = await populate_user_kyc(stream.host)
+            stream_dict["host"] = host_with_kyc
+        streams_with_kyc.append(stream_dict)
+    
+    return streams_with_kyc
 
 
 

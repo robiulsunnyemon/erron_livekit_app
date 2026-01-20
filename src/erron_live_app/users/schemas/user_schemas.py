@@ -43,6 +43,7 @@ class UserResponse(BaseResponse):
     role: Optional[UserRole] = UserRole.USER
     otp: Optional[str]
     account_status: AccountStatus
+    kyc: Optional["KYCSimpleResponse"] = None
 
     class Config:
         from_attributes = True
@@ -141,6 +142,7 @@ class ModeratorResponse(BaseResponse):
     activated_count: int
     inactivated_count: int
     reported_count: int
+    appeal_count: int
 
     created_at: datetime
     updated_at: datetime
@@ -162,12 +164,25 @@ class ReportReviewResponse(BaseResponse):
     action: str
     created_at: datetime
 
+
+    class Config:
+        from_attributes = True
+
+
+class KYCSimpleResponse(BaseModel):
+    id_front: str
+    id_back: str
+    status: str
+    rejection_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
     class Config:
         from_attributes = True
 
 
 class KYCResponse(BaseResponse):
-    user: Optional[UserResponse] = None
+    user: Optional["UserResponse"] = None
     id_front: str
     id_back: str
     status: str

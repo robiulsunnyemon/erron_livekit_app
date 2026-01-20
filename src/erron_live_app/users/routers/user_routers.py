@@ -5,11 +5,12 @@ import shutil
 import os
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest, KYCResponse
+from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest, KYCResponse, ModeratorResponse
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.streaming.models.streaming import LiveStreamModel
 from erron_live_app.users.models.kyc_models import KYCModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
+from erron_live_app.users.utils.populate_kyc import populate_user_kyc
 from typing import Union
 from datetime import datetime
 
@@ -28,7 +29,14 @@ async def get_all_users(skip: int = 0, limit: int = 20):
     """
     # Fetch users sorted by creation date (newest first)
     users = await UserModel.find_all().sort("-created_at").skip(skip).limit(limit).to_list()
-    return users
+    
+    # Populate KYC data for each user
+    users_with_kyc = []
+    for user in users:
+        user_data = await populate_user_kyc(user)
+        users_with_kyc.append(user_data)
+    
+    return users_with_kyc
 
 
 @user_router.get("/search", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
@@ -44,7 +52,14 @@ async def search_users(query: str, skip: int = 0, limit: int = 20):
         ]
     }
     users = await UserModel.find(search_filter).skip(skip).limit(limit).to_list()
-    return users
+    
+    # Populate KYC data for each user
+    users_with_kyc = []
+    for user in users:
+        user_data = await populate_user_kyc(user)
+        users_with_kyc.append(user_data)
+    
+    return users_with_kyc
 
 
 @user_router.get("/my_profile", response_model=Union[ProfileResponse, ModeratorProfileResponse])
@@ -55,9 +70,12 @@ async def my_profile(current_user: Union[UserModel, ModeratorModel] = Depends(ge
     # Fetch all past streams by this user (including ones with status 'ended' or similar)
     past_streams = await LiveStreamModel.find(LiveStreamModel.host.id == current_user.id).sort("-created_at").to_list()
     
+    # Populate KYC data for the user
+    user_data = await populate_user_kyc(current_user)
+    
     # We return a dict that matches ProfileResponse for regular users
     return {
-        **current_user.model_dump(),
+        **user_data,
         "past_streams": past_streams
     }
 
@@ -144,7 +162,10 @@ async def get_user(user_id: str):
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return user
+    
+    # Populate KYC data
+    user_data = await populate_user_kyc(user)
+    return user_data
 
 
 @user_router.post("/kyc/submit", status_code=status.HTTP_201_CREATED)
@@ -210,6 +231,19 @@ async def get_kyc_by_user_id(user_id: UUID):
     return kyc
 
 
+
+
+@user_router.get("/all/moderators", response_model=List[ModeratorResponse], status_code=status.HTTP_200_OK)
+async def get_all_moderators(skip: int = 0, limit: int = 20):
+    """
+    Retrieve a list of all moderators with pagination.
+    
+    - **skip**: Number of records to skip (default is 0)
+    - **limit**: Maximum number of records to return (default is 20)
+    """
+    # Fetch moderators sorted by creation date (newest first)
+    moderators = await ModeratorModel.find_all().sort("-created_at").skip(skip).limit(limit).to_list()
+    return moderators
 
 
 @user_router.delete("/{user_id}", status_code=status.HTTP_200_OK)
