@@ -34,7 +34,7 @@ app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 origins = [
     "http://localhost:5173",
     "http://localhost:8000",
-    "https://eron.mtscorporate.com",
+    "https://erronliveapp.mtscorporate.com",
     "http://localhost:54628/",
     "*"
 ]
