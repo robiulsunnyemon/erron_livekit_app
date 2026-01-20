@@ -27,6 +27,7 @@ class LiveStreamResponse(BaseResponse):
     end_time: Optional[datetime] = None
     total_likes: int
     earn_coins: int
+    livekit_token:str
     total_views: int
     total_comments: int
     status: str
