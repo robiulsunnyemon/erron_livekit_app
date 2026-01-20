@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ReportReviewRequest, ReportReviewResponse
-from erron_live_app.streaming.schemas.streaming import LiveStreamReportResponse
+from erron_live_app.streaming.schemas.streaming import LiveStreamReportResponse, PendingReportsStatsResponse
 from erron_live_app.users.utils.populate_kyc import populate_user_kyc
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
@@ -210,3 +210,24 @@ async def delete_all_likes():
 async def delete_all_livestream():
     await LiveStreamModel.delete_all()
     return {"message":"successfully deleted all livestream"}
+
+
+@router.get("/stats/pending-reports", response_model=PendingReportsStatsResponse)
+async def get_pending_reports_stats():
+    """
+    Get statistics for pending reports.
+    Returns total count and high priority (Nudity) count.
+    """
+    total = await LiveStreamReportModel.find(
+        LiveStreamReportModel.status == "PENDING"
+    ).count()
+    
+    high_priority = await LiveStreamReportModel.find(
+        LiveStreamReportModel.status == "PENDING",
+        LiveStreamReportModel.category == "Nudity"
+    ).count()
+    
+    return {
+        "total": total,
+        "high_priority": high_priority
+    }

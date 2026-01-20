@@ -12,7 +12,7 @@ from erron_live_app.users.utils.user_role import UserRole
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
 from erron_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
-from erron_live_app.streaming.schemas.streaming import LiveStreamResponse
+from erron_live_app.streaming.schemas.streaming import LiveStreamResponse, ActiveStreamsStatsResponse
 from erron_live_app.users.utils.populate_kyc import populate_user_kyc
 
 load_dotenv()
@@ -327,7 +327,20 @@ async def get_active_streams():
     return streams_with_kyc
 
 
+@router.get("/stats/active-streams", response_model=ActiveStreamsStatsResponse)
+async def get_active_streams_stats():
+    total = await LiveStreamModel.find(LiveStreamModel.status == "live").count()
+    free = await LiveStreamModel.find(
+        LiveStreamModel.status == "live",
+        LiveStreamModel.is_premium == False
+    ).count()
+    paid = await LiveStreamModel.find(
+        LiveStreamModel.status == "live",
+        LiveStreamModel.is_premium == True
+    ).count()
 
-
-
-
+    return {
+        "total": total,
+        "free": free,
+        "paid": paid
+    }

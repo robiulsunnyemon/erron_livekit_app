@@ -193,3 +193,6 @@ class KYCResponse(BaseResponse):
 
     class Config:
         from_attributes = True
+
+class PendingKYCStatsResponse(BaseModel):
+    total: int

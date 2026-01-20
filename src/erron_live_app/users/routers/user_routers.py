@@ -5,7 +5,7 @@ import shutil
 import os
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest, KYCResponse, ModeratorResponse
+from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest, KYCResponse, ModeratorResponse, PendingKYCStatsResponse
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.streaming.models.streaming import LiveStreamModel
 from erron_live_app.users.models.kyc_models import KYCModel
@@ -231,6 +231,17 @@ async def get_kyc_by_user_id(user_id: UUID):
     return kyc
 
 
+@user_router.get("/kyc/stats/pending", response_model=PendingKYCStatsResponse, status_code=status.HTTP_200_OK)
+async def get_pending_kyc_stats():
+    """
+    Get statistics for pending KYC requests.
+    Returns total count of pending KYC verifications.
+    """
+    total = await KYCModel.find(KYCModel.status == "pending").count()
+    
+    return {
+        "total": total
+    }
 
 
 @user_router.get("/all/moderators", response_model=List[ModeratorResponse], status_code=status.HTTP_200_OK)

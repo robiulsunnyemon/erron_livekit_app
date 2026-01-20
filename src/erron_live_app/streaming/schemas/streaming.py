@@ -38,6 +38,17 @@ class LiveStreamResponse(BaseResponse):
         from_attributes = True
 
 
+class ActiveStreamsStatsResponse(BaseModel):
+    total: int
+    free: int
+    paid: int
+
+
+class PendingReportsStatsResponse(BaseModel):
+    total: int
+    high_priority: int
+
+
 class LiveStreamReportResponse(BaseResponse):
     session: LiveStreamResponse
     reporter_user: Optional[UserResponse] = None
