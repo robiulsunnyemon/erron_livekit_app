@@ -5,7 +5,7 @@ import shutil
 import os
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
-from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest
+from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest, KYCResponse
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.streaming.models.streaming import LiveStreamModel
 from erron_live_app.users.models.kyc_models import KYCModel
@@ -108,7 +108,7 @@ async def upload_profile_image(
     return {"image_url": image_url}
 
 
-@user_router.post("/my_profile/upload-cover-image", status_code=status.HTTP_200_OK)
+@user_router.post("/my_profile/upload/cover-image", status_code=status.HTTP_200_OK)
 async def upload_cover_image(
     image: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_user)
@@ -194,15 +194,15 @@ async def kyc_submit(
     return {"message": "KYC submitted successfully", "status": "pending"}
 
 
-@user_router.get("/kyc/view", status_code=status.HTTP_200_OK)
+@user_router.get("/kyc/view", response_model=Union[KYCResponse, dict], status_code=status.HTTP_200_OK)
 async def kyc_status(current_user: UserModel = Depends(get_current_user)):
-    kyc = await KYCModel.find_one(KYCModel.user.id == current_user.id)
+    kyc = await KYCModel.find_one(KYCModel.user.id == current_user.id,fetch_links=True)
     if not kyc:
         return {"status": "none"}
     return kyc
 
 
-@user_router.get("/kyc/{user_id}", status_code=status.HTTP_200_OK)
+@user_router.get("/kyc/{user_id}", response_model=KYCResponse, status_code=status.HTTP_200_OK)
 async def get_kyc_by_user_id(user_id: UUID):
     kyc = await KYCModel.find_one(KYCModel.user.id == user_id, fetch_links=True)
     if not kyc:

@@ -164,3 +164,16 @@ class ReportReviewResponse(BaseResponse):
 
     class Config:
         from_attributes = True
+
+
+class KYCResponse(BaseResponse):
+    user: Optional[UserResponse] = None
+    id_front: str
+    id_back: str
+    status: str
+    rejection_reason: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        from_attributes = True

@@ -10,6 +10,7 @@ from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
 from erron_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
+from erron_live_app.streaming.schemas.streaming import LiveStreamResponse
 
 load_dotenv()
 router = APIRouter(prefix="/streaming", tags=["Livestream"])
@@ -75,7 +76,7 @@ async def livekit_webhook(request: Request):
 
 # --- Endpoints ---
 
-@router.post("/start-stream", status_code=status.HTTP_201_CREATED)
+@router.post("/start", status_code=status.HTTP_201_CREATED)
 async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str, current_user: UserModel = Depends(get_current_user)):
     """হোস্টের জন্য লাইভ শুরু করার এন্ডপয়েন্ট"""
     if not LIVEKIT_API_KEY:
@@ -127,7 +128,7 @@ async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str
     return {"live_id": str(new_live.id), "livekit_token": token, "channel_name": channel_name}
 
 
-@router.post("/join-stream/{session_id}")
+@router.post("/join/{session_id}")
 async def join_stream(session_id: str, current_user: UserModel = Depends(get_current_user)):
     """ভিউয়ারের জন্য জয়েন করার এন্ডপয়েন্ট (কয়েন ট্রানজ্যাকশনসহ)"""
     db_live_stream = await LiveStreamModel.get(session_id, fetch_links=True)
@@ -197,7 +198,7 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
     return {"livekit_token": token, "room_name": db_live_stream.channel_name, "balance": current_user.coins}
 
 
-@router.post("/stop-stream/{session_id}")
+@router.post("/stop/{session_id}")
 async def stop_stream(session_id: str, current_user: UserModel = Depends(get_current_user)):
     live_session = await LiveStreamModel.get(session_id,fetch_links=True)
 
@@ -213,27 +214,27 @@ async def stop_stream(session_id: str, current_user: UserModel = Depends(get_cur
 
 
 
-@router.get("/active-streams", response_model=List[LiveStreamModel])
+@router.get("/active", response_model=List[LiveStreamResponse])
 async def get_active_streams():
     return await LiveStreamModel.find(LiveStreamModel.status == "live", fetch_links=True).to_list()
 
 
-@router.get("/active-streams/{category_name}", response_model=List[LiveStreamModel])
+@router.get("/active/{category_name}", response_model=List[LiveStreamResponse])
 async def get_active_category_streams(category_name:str):
     return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.category==category_name, fetch_links=True).to_list()
 
 
 
-@router.get("/active-streams/all/free", response_model=List[LiveStreamModel])
+@router.get("/active/all/free", response_model=List[LiveStreamResponse])
 async def get_active_free_streams():
     return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==False, fetch_links=True).to_list()
 
-@router.get("/active/streams/all/premium", response_model=List[LiveStreamModel])
+@router.get("/active/streams/all/premium", response_model=List[LiveStreamResponse])
 async def get_active_premium_streams():
     return await LiveStreamModel.find(LiveStreamModel.status == "live",LiveStreamModel.is_premium==True, fetch_links=True).to_list()
 
 
-@router.get("/all/streams", response_model=List[LiveStreamModel])
+@router.get("/all/streams", response_model=List[LiveStreamResponse])
 async def get_active_streams():
     return await LiveStreamModel.find(fetch_links=True).to_list()
 

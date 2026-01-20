@@ -6,7 +6,9 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Request,status
 from erron_live_app.users.utils.get_current_user import get_current_user, get_ws_current_user
 from erron_live_app.users.models.user_models import UserModel
+from erron_live_app.users.schemas.user_schemas import UserResponse
 from erron_live_app.chating.models.chat_model import ChatMessageModel
+from erron_live_app.chating.schemas.chat import ChatMessageResponse, ConversationResponse
 from beanie.operators import Or, And
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
@@ -116,7 +118,7 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
         print(f"WebSocket Loop Error: {e}")
         manager.disconnect(user_id)
 
-@router.get("/active-users", response_model=List[UserModel])
+@router.get("/active-users", response_model=List[UserResponse])
 async def get_active_users(current_user: UserModel = Depends(get_current_user)):
     """বর্তমানে চ্যাটে এক্টিভ থাকা ইউজারদের তালিকা"""
     active_ids = list(manager.active_connections.keys())
@@ -131,7 +133,7 @@ async def get_active_users(current_user: UserModel = Depends(get_current_user)):
                 users.append(user)
     return users
 
-@router.get("/history/{receiver_id}")
+@router.get("/history/{receiver_id}", response_model=List[ChatMessageResponse])
 async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, current_user: UserModel = Depends(get_current_user)):
     """নির্দিষ্ট ইউজারের সাথে চ্যাট হিস্ট্রি লোড করা"""
     try:
@@ -150,7 +152,7 @@ async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, cur
     # Return messages in chronological order for the UI
     return messages[::-1]
 
-@router.get("/conversations")
+@router.get("/conversations", response_model=List[ConversationResponse])
 async def get_conversations(current_user: UserModel = Depends(get_current_user)):
     """ইউজারের সব চ্যাট হিস্ট্রি এবং লেটেস্ট মেসেজসহ লিস্ট"""
     pipeline = [

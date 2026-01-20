@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ReportReviewRequest, ReportReviewResponse
+from erron_live_app.streaming.schemas.streaming import LiveStreamReportResponse
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
@@ -79,7 +80,7 @@ async def report_stream(
 
     return {"status": "reported"}
 
-@router.get("/report",status_code=status.HTTP_200_OK)
+@router.get("/report", response_model=list[LiveStreamReportResponse], status_code=status.HTTP_200_OK)
 async def get_all_report(status: Optional[str] = None):
     query = {}
     if status and status != "All":
