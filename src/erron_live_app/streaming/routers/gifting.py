@@ -10,12 +10,15 @@ router = APIRouter(prefix="/streaming/gifts", tags=["Gifting"])
 
 
 
+from erron_live_app.admin.utils import check_feature_access
+
 @router.post("/send")
 async def send_coins(
     amount: float,
     session_id: str,
     current_user: UserModel = Depends(get_current_user)
 ):
+    await check_feature_access("gifting")
     # 1. Validate Input
     if amount <= 0:
          raise HTTPException(status_code=400, detail="Amount must be positive")

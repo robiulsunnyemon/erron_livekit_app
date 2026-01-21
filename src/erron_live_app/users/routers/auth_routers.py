@@ -17,9 +17,11 @@ from typing import Union
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
-# POST create new user
+from erron_live_app.admin.utils import check_feature_access, log_admin_action
+
 @router.post("/signup" ,response_model=UserResponse,status_code=status.HTTP_201_CREATED)
 async def create_user(user: UserCreate):
+    await check_feature_access("registration")
     hashed_password = hash_password(user.password)
     db_user = await UserModel.find_one(UserModel.email == user.email)
     if db_user:
@@ -43,6 +45,14 @@ async def create_user(user: UserCreate):
 # POST create new user
 @router.post("/signup/admin" ,response_model=UserResponse,status_code=status.HTTP_201_CREATED)
 async def create_admin(user: UserCreate):
+    # Admin creation might still be allowed or should it also be blocked? 
+    # Usually admin creation is manual/scripted, but if exposed via API, let's respect the switch or explicit override.
+    # Assuming restricted to registration switch for consistency unless specific "Admin Registration" switch exists.
+    # For safety, let's require it OR assume this endpoint is highly protected (it has no auth dependency though? Dangerous!)
+    # The original code has no auth on /signup/admin. That is a security risk but out of scope for *this* task.
+    # I will add the check.
+    await check_feature_access("registration")
+
     hashed_password = hash_password(user.password)
     db_user = await UserModel.find_one(UserModel.email == user.email)
     if db_user:
@@ -103,6 +113,14 @@ async def create_moderator(data: ModeratorCreate, current_user: UserModel = Depe
     # Log password for "email" sending (In real app, trigger email sending service here)
     print(f"📧 Sending credentials to {data.email}: Username: {data.username}, Password: {data.password}")
 
+    await log_admin_action(
+        actor=current_user,
+        action="Created Moderator",
+        target=new_mod.username,
+        severity="High",
+        details=f"Created moderator with email {new_mod.email}"
+    )
+
     return new_mod
 
 
@@ -133,6 +151,15 @@ async def update_moderator(
         setattr(moderator, key, value)
     
     await moderator.save()
+    
+    await log_admin_action(
+        actor=current_user,
+        action="Updated Moderator",
+        target=moderator.username,
+        severity="Medium",
+        details=f"Updated fields: {', '.join(update_dict.keys())}"
+    )
+    
     return moderator
 
 
@@ -172,6 +199,16 @@ async def update_user_status_by_moderator(
             current_user.inactivated_count += 1
             
         await current_user.save()
+
+    # Log the action
+    actor_identifier = current_user.email if isinstance(current_user, UserModel) else current_user.username
+    await log_admin_action(
+        actor=current_user,
+        action="Updated User Status",
+        target=target_user.email,
+        severity="High" if data.status == AccountStatus.SUSPEND else "Medium",
+        details=f"Changed status from {old_status} to {data.status}"
+    )
 
     return target_user
 
@@ -254,6 +291,7 @@ async def reset_password(request: ResetPasswordRequest):
 
     await db_user.update({"$set":{db_user.password:hashed_password}})
     return {"message":"successfully reset password"}
+
 
 
 

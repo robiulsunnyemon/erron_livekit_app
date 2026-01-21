@@ -14,6 +14,7 @@ from erron_live_app.finance.routers.finance import router as finance_router
 from erron_live_app.streaming.routers.gifting import router as gifting_router
 from erron_live_app.streaming.routers.interactions import router as interactions_router
 from erron_live_app.chating.routers.chat_routers import router as chat_router
+from erron_live_app.admin.routers import router as admin_router
 
 
 
@@ -66,3 +67,4 @@ app.include_router(finance_router,prefix="/api/v1")
 app.include_router(gifting_router,prefix="/api/v1")
 app.include_router(interactions_router,prefix="/api/v1")
 app.include_router(chat_router,prefix="/api/v1")
+app.include_router(admin_router,prefix="/api/v1")

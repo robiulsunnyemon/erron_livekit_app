@@ -77,11 +77,16 @@ async def livekit_webhook(request: Request):
     return {"status": "success"}
 
 
-# --- Endpoints ---
+from erron_live_app.admin.utils import check_feature_access, log_admin_action
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
 async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str, current_user: UserModel = Depends(get_current_user)):
     """হোস্টের জন্য লাইভ শুরু করার এন্ডপয়েন্ট"""
+    
+    # Emergency Switch Check
+    if is_premium:
+        await check_feature_access("paid_streams")
+        
     if not LIVEKIT_API_KEY:
         raise HTTPException(status_code=500, detail="LiveKit credentials missing")
 
@@ -220,6 +225,16 @@ async def stop_stream(session_id: str, current_user: Union[UserModel, ModeratorM
     live_session.end_time = datetime.now(timezone.utc)
     await live_session.save()
 
+    # Log specific admin/mod actions
+    if is_admin or is_moderator:
+        await log_admin_action(
+            actor=current_user,
+            action="Stopped Live Stream",
+            target=str(live_session.id),
+            severity="Medium",
+            details=f"Forcefully stopped stream {live_session.channel_name}"
+        )
+
     return {"message": "Stream ended successfully"}
 
 
@@ -241,6 +256,16 @@ async def resume_stream(session_id: str, current_user: Union[UserModel, Moderato
     live_session.status = "live"
     live_session.end_time = datetime.now(timezone.utc)
     await live_session.save()
+    
+    # Log specific admin/mod actions
+    if is_admin or is_moderator:
+        await log_admin_action(
+            actor=current_user,
+            action="Resumed Live Stream",
+            target=str(live_session.id),
+            severity="Medium",
+            details=f"Forcefully resumed stream {live_session.channel_name}"
+        )
 
     return {"message": "Stream ended successfully"}
 
