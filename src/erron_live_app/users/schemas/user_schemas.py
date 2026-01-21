@@ -90,8 +90,6 @@ class ProfileUpdateRequest(BaseModel):
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     bio: Optional[str] = None
-    profile_image: Optional[str] = None
-    cover_image: Optional[str] = None
     country: Optional[str] = None
     gender: Optional[str] = None
     date_of_birth: Optional[str] = None
