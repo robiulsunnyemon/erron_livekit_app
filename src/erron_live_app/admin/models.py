@@ -2,10 +2,11 @@ from typing import Optional, Any
 from datetime import datetime, timezone
 from beanie import Document, Link
 from pydantic import Field
+from erron_live_app.core.base.base import BaseCollection
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
 
-class SystemConfigModel(Document):
+class SystemConfigModel(BaseCollection):
     """
     Singleton document to store system-wide configurations (emergency switches).
     """
@@ -29,7 +30,7 @@ class SystemConfigModel(Document):
         return config
 
 
-class SecurityAuditLogModel(Document):
+class SecurityAuditLogModel(BaseCollection):
     """
     Log of administrative and security-critical actions.
     """

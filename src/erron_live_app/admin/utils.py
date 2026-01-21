@@ -50,8 +50,8 @@ async def log_admin_action(
     )
     
     if isinstance(actor, UserModel):
-        log_entry.actor_user = actor.to_ref()
+        log_entry.actor_user = actor
     elif isinstance(actor, ModeratorModel):
-        log_entry.actor_moderator = actor.to_ref()
+        log_entry.actor_moderator = actor
         
     await log_entry.insert()
