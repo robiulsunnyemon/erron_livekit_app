@@ -49,6 +49,7 @@ class LiveViewerModel(BaseCollection):
     user: Link[UserModel]
     joined_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     fee_paid: float = 0
+    has_paid: bool = False
 
     class Settings:
         name = "live_viewers"

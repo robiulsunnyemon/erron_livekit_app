@@ -146,45 +146,32 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
 
     host_user = cast(UserModel, db_live_stream.host)
 
+    # Remove payment logic from join
     # Check if user has already joined this session
     existing_viewer = await LiveViewerModel.find_one(
         LiveViewerModel.session.id == db_live_stream.id,
         LiveViewerModel.user.id == current_user.id
     )
 
+    is_admin = current_user.role == UserRole.ADMIN if isinstance(current_user, UserModel) else False
+    is_moderator = isinstance(current_user, ModeratorModel)
+    
+    # Determine initial has_paid status
+    # Free streams: Always paid
+    # Premium streams: Paid if Admin/Mod, otherwise False (for 3s preview)
+    has_paid = not db_live_stream.is_premium or is_admin or is_moderator
+
     if not existing_viewer:
-        # প্রিমিয়াম চেক এবং কয়েন ট্রান্সফার (শুধু প্রথমবার জয়েন করলে)
-        if db_live_stream.is_premium and db_live_stream.entry_fee > 0:
-            if current_user.coins < db_live_stream.entry_fee:
-                raise HTTPException(status_code=402, detail="Insufficient coins")
-
-            current_user.coins -= db_live_stream.entry_fee
-            host_user.coins += db_live_stream.entry_fee
-            db_live_stream.earn_coins += int(db_live_stream.entry_fee)
-
-            await current_user.save()
-            await host_user.save()
-
-            # Log Transactions
-            # Debit for Viewer
-            await TransactionModel(
-                user=current_user.to_ref(),
-                amount=db_live_stream.entry_fee,
-                transaction_type=TransactionType.DEBIT,
-                reason=TransactionReason.ENTRY_FEE_PAID,
-                related_entity_id=str(db_live_stream.id),
-                description=f"Paid entry fee for stream {db_live_stream.channel_name}"
-            ).insert()
-
-            # Credit for Host
-            await TransactionModel(
-                user=host_user.to_ref(),
-                amount=db_live_stream.entry_fee,
-                transaction_type=TransactionType.CREDIT,
-                reason=TransactionReason.ENTRY_FEE_RECEIVED,
-                related_entity_id=str(db_live_stream.id),
-                description=f"Received entry fee from {current_user.first_name}"
-            ).insert()
+        # If premium and NOT has_paid (regular user), we DO NOT deduct money yet.
+        # They get 3 seconds free.
+        
+        # Determine fee paid recorded in viewer model (0 for now if deferred)
+        recorded_fee = 0 
+        if has_paid and db_live_stream.is_premium and not (is_admin or is_moderator):
+             # This block logically unreachable with current logic unless we restore instant pay later
+             # But keeping consistent: if they somehow paid (e.g. logic change), record it.
+             # For now, if deferred, fee_paid is 0.
+             pass
 
         db_live_stream.total_views += 1
         await db_live_stream.save()
@@ -193,8 +180,14 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
         await LiveViewerModel(
             session=db_live_stream.to_ref(),
             user=current_user.to_ref(),
-            fee_paid=db_live_stream.entry_fee if db_live_stream.is_premium else 0
+            fee_paid=0, # Will be updated in /pay endpoint
+            has_paid=has_paid
         ).insert()
+    else:
+        # If already joined, check if they have paid (maybe rejoined after paying)
+        # We trust the DB record, but valid admins/mods always bypass
+        if is_admin or is_moderator:
+            has_paid = True
 
     token = create_livekit_token(
         identity=str(current_user.id),
@@ -203,7 +196,84 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
         can_publish=False
     )
 
-    return {"livekit_token": token, "room_name": db_live_stream.channel_name, "balance": current_user.coins}
+    return {
+        "livekit_token": token, 
+        "room_name": db_live_stream.channel_name, 
+        "balance": current_user.coins if isinstance(current_user, UserModel) else 0,
+        "is_premium": db_live_stream.is_premium,
+        "has_paid": has_paid,
+        "entry_fee": db_live_stream.entry_fee
+    }
+
+
+@router.post("/pay/{session_id}")
+async def pay_stream_fee(session_id: str, current_user: UserModel = Depends(get_current_user)):
+    """
+    Endpoint for paying the stream fee after the 3-second free preview.
+    """
+    db_live_stream = await LiveStreamModel.get(session_id, fetch_links=True)
+    if not db_live_stream or db_live_stream.status != "live":
+        raise HTTPException(status_code=404, detail="Live stream ended or not found")
+
+    host_user = cast(UserModel, db_live_stream.host)
+
+    # Find viewer record
+    viewer_record = await LiveViewerModel.find_one(
+        LiveViewerModel.session.id == db_live_stream.id,
+        LiveViewerModel.user.id == current_user.id
+    )
+
+    if not viewer_record:
+        raise HTTPException(status_code=400, detail="You must join the stream first")
+
+    if viewer_record.has_paid:
+        return {"message": "Already paid", "balance": current_user.coins}
+
+    if not db_live_stream.is_premium or db_live_stream.entry_fee <= 0:
+         # Should be paid/free anyway
+         viewer_record.has_paid = True
+         await viewer_record.save()
+         return {"message": "Stream is free", "balance": current_user.coins}
+
+    # Process Payment
+    if current_user.coins < db_live_stream.entry_fee:
+        raise HTTPException(status_code=402, detail="Insufficient coins")
+
+    current_user.coins -= db_live_stream.entry_fee
+    host_user.coins += db_live_stream.entry_fee
+    db_live_stream.earn_coins += int(db_live_stream.entry_fee)
+
+    await current_user.save()
+    await host_user.save()
+    await db_live_stream.save()
+
+    # Log Transactions
+    # Debit for Viewer
+    await TransactionModel(
+        user=current_user.to_ref(),
+        amount=db_live_stream.entry_fee,
+        transaction_type=TransactionType.DEBIT,
+        reason=TransactionReason.ENTRY_FEE_PAID,
+        related_entity_id=str(db_live_stream.id),
+        description=f"Paid entry fee for stream {db_live_stream.channel_name} (After Preview)"
+    ).insert()
+
+    # Credit for Host
+    await TransactionModel(
+        user=host_user.to_ref(),
+        amount=db_live_stream.entry_fee,
+        transaction_type=TransactionType.CREDIT,
+        reason=TransactionReason.ENTRY_FEE_RECEIVED,
+        related_entity_id=str(db_live_stream.id),
+        description=f"Received entry fee from {current_user.first_name}"
+    ).insert()
+
+    # Update Viewer Record
+    viewer_record.has_paid = True
+    viewer_record.fee_paid = db_live_stream.entry_fee
+    await viewer_record.save()
+
+    return {"message": "Payment successful", "balance": current_user.coins}
 
 
 @router.post("/stop/{session_id}")
