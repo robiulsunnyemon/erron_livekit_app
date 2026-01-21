@@ -7,13 +7,69 @@ from erron_live_app.users.utils.user_role import UserRole
 from erron_live_app.admin.models import SystemConfigModel, SecurityAuditLogModel
 from erron_live_app.admin.schemas import SystemConfigResponse, SystemConfigUpdate, SecurityAuditLogResponse
 from erron_live_app.admin.utils import get_system_config, log_admin_action
+from datetime import datetime
+from erron_live_app.admin.schemas import UserStatsResponse, MonthlyUserStat
+import calendar
+
+
 
 router = APIRouter(prefix="/admin", tags=["Admin System"])
 
 
 
+@router.get("/stats/users/monthly", response_model=UserStatsResponse)
+async def get_monthly_user_stats(
+    year: int,
+    current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)
+):
+    """
+    Get the count of new user registrations for each month of the specified year.
+    """
+    start_date = datetime(year, 1, 1)
+    if year == 9999: # Boundary check or handling future? Just simple logic for now.
+         end_date = datetime(year, 12, 31, 23, 59, 59)
+    else:
+         end_date = datetime(year, 12, 31, 23, 59, 59)
 
+    # Aggregation Pipeline
+    pipeline = [
+        {
+            "$match": {
+                "created_at": {
+                    "$gte": start_date,
+                    "$lte": end_date
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": {"$month": "$created_at"},
+                "count": {"$sum": 1}
+            }
+        }
+    ]
 
+    results = await UserModel.get_motor_collection().aggregate(pipeline).to_list(length=12)
+    
+    # Process results into a dictionary for easy lookup
+    month_counts = {item["_id"]: item["count"] for item in results}
+    
+    # Build complete list for all 12 months
+    monthly_stats = []
+    total_users = 0
+    for i in range(1, 13):
+        count = month_counts.get(i, 0)
+        total_users += count
+        monthly_stats.append(MonthlyUserStat(
+            month=calendar.month_abbr[i], # Jan, Feb...
+            count=count
+        ))
+        
+    return UserStatsResponse(
+        year=year,
+        total_new_users=total_users,
+        monthly_counts=monthly_stats
+    )
 
 
 async def get_admin_or_moderator(

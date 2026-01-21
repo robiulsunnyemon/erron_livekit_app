@@ -26,4 +26,14 @@ class SecurityAuditLogResponse(BaseResponse):
     timestamp: datetime
     actor_name: Optional[str] = None # Computed field for display
     
+    
     # model_config = ConfigDict(from_attributes=True)
+
+class MonthlyUserStat(BaseModel):
+    month: str
+    count: int
+
+class UserStatsResponse(BaseModel):
+    year: int
+    total_new_users: int
+    monthly_counts: List[MonthlyUserStat]
