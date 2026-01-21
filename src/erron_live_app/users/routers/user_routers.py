@@ -123,6 +123,11 @@ async def upload_profile_image(
         shutil.copyfileobj(image.file, buffer)
     
     image_url = f"/uploads/profiles/{filename}"
+    
+    # Update user profile
+    current_user.profile_image = image_url
+    await current_user.save()
+    
     return {"image_url": image_url}
 
 
@@ -145,6 +150,11 @@ async def upload_cover_image(
         shutil.copyfileobj(image.file, buffer)
     
     image_url = f"/uploads/covers/{filename}"
+    
+    # Update user profile
+    current_user.cover_image = image_url
+    await current_user.save()
+
     return {"image_url": image_url}
 
 
