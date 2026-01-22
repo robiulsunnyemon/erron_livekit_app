@@ -12,7 +12,7 @@ from erron_live_app.chating.models.chat_model import ChatMessageModel
 from erron_live_app.users.models.kyc_models import KYCModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
 from erron_live_app.admin.models import SystemConfigModel, SecurityAuditLogModel
-
+from erron_live_app.finance.models.payout import PayoutConfigModel, BeneficiaryModel, PayoutRequestModel
 
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
@@ -34,7 +34,10 @@ MODELS = [
     LiveStreamReportReviewModel,
     ModeratorModel,
     SystemConfigModel,
-    SecurityAuditLogModel
+    SecurityAuditLogModel,
+    PayoutConfigModel,
+    BeneficiaryModel,
+    PayoutRequestModel
 ]
 
 
