@@ -14,6 +14,8 @@ from erron_live_app.finance.models.transaction import TransactionModel, Transact
 from erron_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
 from erron_live_app.streaming.schemas.streaming import LiveStreamResponse, ActiveStreamsStatsResponse
 from erron_live_app.users.utils.populate_kyc import populate_user_kyc
+from erron_live_app.notifications.utils import send_notification
+from erron_live_app.notifications.models import NotificationType
 
 load_dotenv()
 router = APIRouter(prefix="/streaming", tags=["Livestream"])
@@ -132,6 +134,15 @@ async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str
             related_entity_id=str(new_live.id),
             description=f"Paid fee to start premium stream with {entry_fee} entry fee"
         ).insert()
+
+    # Notification: Live Started
+    await send_notification(
+        user=current_user,
+        title="Live Started",
+        body=f"You started a live stream: {title}",
+        type=NotificationType.LIVE,
+        related_entity_id=str(new_live.id)
+    )
 
     return {"live_id": str(new_live.id), "livekit_token": token, "channel_name": channel_name}
 
@@ -304,6 +315,19 @@ async def stop_stream(session_id: str, current_user: Union[UserModel, ModeratorM
             severity="Medium",
             details=f"Forcefully stopped stream {live_session.channel_name}"
         )
+
+    # Notification: Live Ended
+    # We send to host (if they didn't stop it themselves? OR just a summary)
+    if live_session.host:
+        host_user = await live_session.host.fetch()
+        if host_user:
+            await send_notification(
+                user=host_user,
+                title="Live Ended",
+                body=f"Your live stream has ended.",
+                type=NotificationType.LIVE,
+                related_entity_id=str(live_session.id)
+            )
 
     return {"message": "Stream ended successfully"}
 

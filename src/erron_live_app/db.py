@@ -13,6 +13,7 @@ from erron_live_app.users.models.kyc_models import KYCModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
 from erron_live_app.admin.models import SystemConfigModel, SecurityAuditLogModel
 from erron_live_app.finance.models.payout import PayoutConfigModel, BeneficiaryModel, PayoutRequestModel
+from erron_live_app.notifications.models import NotificationModel
 
 MONGODB_URL = os.getenv("MONGODB_URL")
 DATABASE_NAME = os.getenv("DATABASE_NAME")
@@ -37,7 +38,8 @@ MODELS = [
     SecurityAuditLogModel,
     PayoutConfigModel,
     BeneficiaryModel,
-    PayoutRequestModel
+    PayoutRequestModel,
+    NotificationModel
 ]
 
 

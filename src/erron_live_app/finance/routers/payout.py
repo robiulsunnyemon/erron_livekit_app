@@ -17,6 +17,8 @@ from erron_live_app.finance.schemas.payout import (
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
 from erron_live_app.admin.utils import log_admin_action
 from erron_live_app.users.utils.populate_kyc import populate_user_kyc
+from erron_live_app.notifications.utils import send_notification
+from erron_live_app.notifications.models import NotificationType
 
 router = APIRouter(prefix="/finance", tags=["Finance & Payouts"])
 
@@ -139,6 +141,15 @@ async def request_payout(
         related_entity_id=str(payout_req.id),
         description=f"Withdrawal request for ${fiat_amount:.2f}"
     ).insert()
+
+    # Notification: Payout Requested
+    await send_notification(
+        user=current_user,
+        title="Payout Requested",
+        body=f"Your request for ${fiat_amount:.2f} has been submitted.",
+        type=NotificationType.FINANCE,
+        related_entity_id=str(payout_req.id)
+    )
 
     # Manual Response Construction
     response = payout_req.model_dump()
@@ -350,6 +361,25 @@ async def process_payout_request(
 
     req.updated_at = datetime.now(timezone.utc)
     await req.save()
+    
+    # Notification: Payout Action
+    target_user = req.user
+    if hasattr(target_user, "fetch"):
+        target_user = await target_user.fetch()
+        
+    if target_user:
+        status_msg = "approved" if req.status == PayoutStatus.APPROVED else "declined"
+        body_msg = f"Your payout request for ${req.amount_fiat:.2f} has been {status_msg}."
+        if req.admin_note:
+            body_msg += f" Note: {req.admin_note}"
+            
+        await send_notification(
+            user=target_user,
+            title=f"Payout {status_msg.capitalize()}",
+            body=body_msg,
+            type=NotificationType.FINANCE,
+            related_entity_id=str(req.id)
+        )
     
     # Populate Response
     response = req.model_dump()

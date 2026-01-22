@@ -13,6 +13,8 @@ from erron_live_app.users.utils.get_current_user import get_current_user
 import requests
 from uuid import UUID
 from typing import Union
+from erron_live_app.notifications.utils import send_notification
+from erron_live_app.notifications.models import NotificationType
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -37,6 +39,15 @@ async def create_user(user: UserCreate):
     await new_user.create()
     send_otp_data = SendOtpModel(email=new_user.email, otp=new_user.otp)
     ##await send_otp(send_otp_data)
+    
+    # Notification: Account Created
+    await send_notification(
+        user=new_user,
+        title="Welcome to Erron Live!",
+        body="Thank you for creating an account. Please verify your email.",
+        type=NotificationType.ACCOUNT
+    )
+    
     return new_user
 
 
@@ -223,6 +234,15 @@ async def verify_otp(user:VerifyOTP):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Wrong OTP")
 
     await db_user.update({"$set": {UserModel.is_verified: True}})
+    
+    # Notification: Verified
+    await send_notification(
+        user=db_user,
+        title="Account Verified",
+        body="Your account has been successfully verified!",
+        type=NotificationType.ACCOUNT
+    )
+    
     return {"message":"You have  verified","data":db_user}
 
 
@@ -290,6 +310,15 @@ async def reset_password(request: ResetPasswordRequest):
 
 
     await db_user.update({"$set":{db_user.password:hashed_password}})
+    
+    # Notification: Security Alert
+    await send_notification(
+        user=db_user,
+        title="Password Changed",
+        body="Your password was reset successfully.",
+        type=NotificationType.ACCOUNT
+    )
+    
     return {"message":"successfully reset password"}
 
 
