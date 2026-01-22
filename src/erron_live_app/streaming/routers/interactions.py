@@ -79,6 +79,17 @@ async def report_stream(
 
     await report.insert()
 
+    # Increase Host Shady Score
+    if stream.host:
+        host = stream.host
+        if hasattr(host, "fetch"):
+            host = await host.fetch()
+        if host:
+            if host.shady is None:
+                host.shady = 0.0
+            host.shady += 1.0
+            await host.save()
+
     return {"status": "reported"}
 
 @router.get("/report", response_model=list[LiveStreamReportResponse], status_code=status.HTTP_200_OK)
@@ -132,15 +143,32 @@ async def review_report(
     # Create the review record
     review = LiveStreamReportReviewModel(
         report=report,
-        moderator=current_user,
         note=data.note,
         action=data.action
     )
+
+    if isinstance(current_user, ModeratorModel):
+        review.moderator = current_user
+    else:
+        review.admin = current_user
+    
     await review.insert()
 
     # Update report status
     if data.action == "DISMISS":
         report.status = "DISMISSED"
+        
+        # Decrease Host Shady Score on Dismiss
+        if report.session and report.session.host:
+            host = report.session.host
+            if hasattr(host, "fetch"):
+                host = await host.fetch()
+            if host:
+                if host.shady is None:
+                    host.shady = 0.0
+                host.shady = max(0.0, host.shady - 1.0) # Ensure it doesn't go below 0
+                await host.save()
+
     else:
         report.status = "RESOLVED"
     await report.save()

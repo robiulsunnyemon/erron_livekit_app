@@ -192,5 +192,9 @@ class KYCResponse(BaseResponse):
     class Config:
         from_attributes = True
 
+class KYCUpdate(BaseModel):
+    status: str # approved, rejected
+    rejection_reason: Optional[str] = None
+
 class PendingKYCStatsResponse(BaseModel):
     total: int

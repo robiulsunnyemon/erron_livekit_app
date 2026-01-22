@@ -101,7 +101,8 @@ class LiveStreamReportModel(BaseCollection):
 
 class LiveStreamReportReviewModel(BaseCollection):
     report: Link[LiveStreamReportModel]
-    moderator: Link[ModeratorModel]
+    moderator: Optional[Link[ModeratorModel]] = None
+    admin: Optional[Link[UserModel]] = None
     note: Optional[str] = None
     action: str  # DISMISS, INACTIVE (Warn), SUSPEND (Ban)
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
