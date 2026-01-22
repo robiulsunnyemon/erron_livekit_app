@@ -37,3 +37,19 @@ class UserStatsResponse(BaseModel):
     year: int
     total_new_users: int
     monthly_counts: List[MonthlyUserStat]
+
+
+class MonthlyRevenueStat(BaseModel):
+    month: str
+    revenue_usd: float
+
+class RevenueTrendResponse(BaseModel):
+    year: int
+    total_yearly_revenue: float
+    monthly_revenues: List[MonthlyRevenueStat]
+
+class FinanceStatsResponse(BaseModel):
+    total_token_sales_usd: float
+    total_payouts_usd: float
+    profit_margin_usd: float
+    pending_payouts_usd: float

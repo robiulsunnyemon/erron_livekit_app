@@ -5,10 +5,15 @@ from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.models.moderator_models import ModeratorModel
 from erron_live_app.users.utils.user_role import UserRole
 from erron_live_app.admin.models import SystemConfigModel, SecurityAuditLogModel
-from erron_live_app.admin.schemas import SystemConfigResponse, SystemConfigUpdate, SecurityAuditLogResponse
+from erron_live_app.admin.schemas import (
+    SystemConfigResponse, SystemConfigUpdate, SecurityAuditLogResponse,
+    UserStatsResponse, MonthlyUserStat,
+    RevenueTrendResponse, MonthlyRevenueStat, FinanceStatsResponse
+)
 from erron_live_app.admin.utils import get_system_config, log_admin_action
 from datetime import datetime
-from erron_live_app.admin.schemas import UserStatsResponse, MonthlyUserStat
+from erron_live_app.finance.models.transaction import TransactionModel, TransactionReason
+from erron_live_app.finance.models.payout import PayoutRequestModel, PayoutStatus, PayoutConfigModel
 import calendar
 
 
@@ -170,3 +175,108 @@ async def get_audit_logs(
         response_logs.append(log_dict)
         
     return response_logs
+
+
+@router.get("/stats/finance/revenue-trend", response_model=RevenueTrendResponse)
+async def get_revenue_trend(
+    year: int,
+    current_user: Union[UserModel, ModeratorModel] = Depends(get_admin_or_moderator)
+):
+    """
+    Get monthly revenue trend for a specific year.
+    Revenue is calculated from 'topup' transactions converted to USD.
+    """
+    payout_config = await PayoutConfigModel.get_config()
+    token_rate = payout_config.token_rate_usd
+
+    start_date = datetime(year, 1, 1)
+    end_date = datetime(year, 12, 31, 23, 59, 59)
+
+    pipeline = [
+        {
+            "$match": {
+                "reason": TransactionReason.TOPUP,
+                "created_at": {
+                    "$gte": start_date,
+                    "$lte": end_date
+                }
+            }
+        },
+        {
+            "$group": {
+                "_id": {"$month": "$created_at"},
+                "total_coins": {"$sum": "$amount"}
+            }
+        }
+    ]
+
+    results = await TransactionModel.get_motor_collection().aggregate(pipeline).to_list(length=12)
+    
+    month_map = {item["_id"]: item["total_coins"] for item in results}
+    
+    monthly_stats = []
+    total_revenue = 0.0
+
+    for i in range(1, 13):
+        coins = month_map.get(i, 0)
+        revenue = coins * token_rate # Convert to USD
+        total_revenue += revenue
+        
+        monthly_stats.append(MonthlyRevenueStat(
+            month=calendar.month_abbr[i],
+            revenue_usd=revenue
+        ))
+
+    return RevenueTrendResponse(
+        year=year,
+        total_yearly_revenue=total_revenue,
+        monthly_revenues=monthly_stats
+    )
+
+
+@router.get("/stats/finance/overview", response_model=FinanceStatsResponse)
+async def get_finance_overview(
+    current_user: Union[UserModel, ModeratorModel] = Depends(get_admin_or_moderator)
+):
+    """
+    Get lifetime finance statistics (Sales, Payouts, Profit, Pending).
+    """
+    payout_config = await PayoutConfigModel.get_config()
+    token_rate = payout_config.token_rate_usd
+
+    # 1. Total Token Sales (USD)
+    # Aggregate all TOPUP transactions
+    sales_pipeline = [
+        {"$match": {"reason": TransactionReason.TOPUP}},
+        {"$group": {"_id": None, "total_coins": {"$sum": "$amount"}}}
+    ]
+    sales_result = await TransactionModel.get_motor_collection().aggregate(sales_pipeline).to_list(length=1)
+    total_sales_coins = sales_result[0]["total_coins"] if sales_result else 0
+    total_sales_usd = total_sales_coins * token_rate
+
+    # 2. Total Payouts (USD) - Approved
+    payouts_pipeline = [
+        {"$match": {"status": PayoutStatus.APPROVED}},
+        {"$group": {"_id": None, "total_payout": {"$sum": "$final_amount"}}} # final_amount is in USD
+    ]
+    payouts_result = await PayoutRequestModel.get_motor_collection().aggregate(payouts_pipeline).to_list(length=1)
+    total_payouts_usd = payouts_result[0]["total_payout"] if payouts_result else 0
+
+    # 3. Pending Payouts (USD)
+    pending_pipeline = [
+        {"$match": {"status": PayoutStatus.PENDING}},
+        {"$group": {"_id": None, "total_pending": {"$sum": "$final_amount"}}}
+    ]
+    pending_result = await PayoutRequestModel.get_motor_collection().aggregate(pending_pipeline).to_list(length=1)
+    total_pending_usd = pending_result[0]["total_pending"] if pending_result else 0
+
+    # 4. Profit Margin (USD)
+    # Profit = Revenue - Approved Payouts
+    profit_margin_usd = total_sales_usd - total_payouts_usd
+
+    return FinanceStatsResponse(
+        total_token_sales_usd=total_sales_usd,
+        total_payouts_usd=total_payouts_usd,
+        profit_margin_usd=profit_margin_usd,
+        pending_payouts_usd=total_pending_usd
+    )
