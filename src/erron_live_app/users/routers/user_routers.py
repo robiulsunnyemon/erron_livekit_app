@@ -254,11 +254,54 @@ async def get_pending_kyc_stats():
     }
 
 
-@user_router.patch("/kyc-verifications/{kyc_id}", response_model=KYCResponse, status_code=status.HTTP_200_OK)
-async def update_kyc_status(
-    kyc_id: UUID,
-    data: KYCUpdate,
-    current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)
+# @user_router.patch("/kyc-verifications/{kyc_id}", response_model=KYCResponse, status_code=status.HTTP_200_OK)
+# async def update_kyc_status(
+#     kyc_id: UUID,
+#     data: KYCUpdate,
+#     current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)
+# ):
+#     """
+#     Update KYC status. Only Admin or Moderators can perform this action.
+#     """
+#     # Permission Check
+#     is_admin = isinstance(current_user, UserModel) and current_user.role == UserRole.ADMIN
+#     is_mod = isinstance(current_user, ModeratorModel)
+#
+#     if not is_admin and not is_mod:
+#         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
+#
+#     kyc = await KYCModel.get(kyc_id, fetch_links=True)
+#     if not kyc:
+#         raise HTTPException(status_code=404, detail="KYC request not found")
+#
+#     kyc.status = data.status
+#     if data.rejection_reason:
+#         kyc.rejection_reason = data.rejection_reason
+#
+#     await kyc.save()
+#
+#     # Update User Verification Status
+#     if kyc.user:
+#         user = kyc.user
+#         if hasattr(user, "fetch"):
+#              user = await user.fetch()
+#
+#         if user:
+#             if data.status == "approved":
+#                 user.is_verified = True
+#             elif data.status == "rejected":
+#                 user.is_verified = False
+#
+#             await user.save()
+#
+#     return kyc
+
+
+@user_router.patch("/kyc-verifications/{user_id}", response_model=KYCResponse, status_code=status.HTTP_200_OK)
+async def update_kyc_status_by_user_id(
+        user_id: UUID,
+        data: KYCUpdate,
+        current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)
 ):
     """
     Update KYC status. Only Admin or Moderators can perform this action.
@@ -266,35 +309,39 @@ async def update_kyc_status(
     # Permission Check
     is_admin = isinstance(current_user, UserModel) and current_user.role == UserRole.ADMIN
     is_mod = isinstance(current_user, ModeratorModel)
-    
+
     if not is_admin and not is_mod:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Permission denied")
 
-    kyc = await KYCModel.get(kyc_id, fetch_links=True)
+    kyc = await KYCModel.find_one(KYCModel.user.id == user_id, fetch_links=True)
+
+
     if not kyc:
         raise HTTPException(status_code=404, detail="KYC request not found")
 
     kyc.status = data.status
     if data.rejection_reason:
         kyc.rejection_reason = data.rejection_reason
-    
+
     await kyc.save()
 
     # Update User Verification Status
     if kyc.user:
         user = kyc.user
         if hasattr(user, "fetch"):
-             user = await user.fetch()
-        
+            user = await user.fetch()
+
         if user:
             if data.status == "approved":
                 user.is_verified = True
             elif data.status == "rejected":
                 user.is_verified = False
-            
+
             await user.save()
 
     return kyc
+
+
 
 
 @user_router.get("/all/moderators", response_model=List[ModeratorResponse], status_code=status.HTTP_200_OK)
