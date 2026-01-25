@@ -233,7 +233,8 @@ async def verify_otp(user:VerifyOTP):
     if user.otp != db_user.otp:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,detail="Wrong OTP")
 
-    await db_user.update({"$set": {UserModel.is_verified: True}})
+    db_user.is_verified = True
+    await db_user.save()
     
     # Notification: Verified
     await send_notification(
@@ -282,8 +283,8 @@ async def resend_otp(request: ResendOTPRequest):
     db_user = await UserModel.find_one(UserModel.email == request.email)
     if db_user is None :
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,detail="User not found")
-    otp=generate_otp()
-    await db_user.update({"$set":{db_user.otp:otp}})
+    db_user.otp = generate_otp()
+    await db_user.save()
     send_otp_data = SendOtpModel(email=db_user.email, otp=db_user.otp)
     ##await send_otp(send_otp_data)
 
@@ -309,7 +310,8 @@ async def reset_password(request: ResetPasswordRequest):
     hashed_password = hash_password(request.new_password)
 
 
-    await db_user.update({"$set":{db_user.password:hashed_password}})
+    db_user.password = hash_password(request.new_password)
+    await db_user.save()
     
     # Notification: Security Alert
     await send_notification(
