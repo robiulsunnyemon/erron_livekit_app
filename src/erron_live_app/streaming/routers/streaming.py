@@ -463,3 +463,55 @@ async def get_active_streams_stats():
         "free": free,
         "paid": paid
     }
+@router.get("/search", response_model=List[LiveStreamResponse])
+async def search_streams(q: str):
+    """
+    হোস্টের নাম, টাইটেল, চ্যানেল নাম এবং ক্যাটাগরি অনুযায়ী সার্চ করার এন্ডপয়েন্ট।
+    """
+    pipeline = [
+        {"$match": {"status": "live"}},
+        {
+            "$lookup": {
+                "from": "users",
+                "localField": "host.$id",
+                "foreignField": "_id",
+                "as": "host_info"
+            }
+        },
+        {"$unwind": "$host_info"},
+        {
+            "$match": {
+                "$or": [
+                    {"title": {"$regex": q, "$options": "i"}},
+                    {"category": {"$regex": q, "$options": "i"}},
+                    {"channel_name": {"$regex": q, "$options": "i"}},
+                    {"host_info.first_name": {"$regex": q, "$options": "i"}},
+                    {"host_info.last_name": {"$regex": q, "$options": "i"}}
+                ]
+            }
+        },
+        {"$sort": {"created_at": -1}}
+    ]
+    
+    results = await LiveStreamModel.aggregate(pipeline).to_list()
+    
+    # LiveStreamResponse এর সাথে মিল রাখার জন্য এবং KYC পপুলেট করার জন্য
+    # রেজাল্টগুলো ম্যানুয়ালি প্রসেস করা হচ্ছে
+    streams_with_kyc = []
+    for res in results:
+        # DB ID কে স্ট্রিং হিসেবে এবং _id কে id হিসেবে সেট করা
+        res["id"] = res["_id"]
+        
+        # KYC পপুলেশন
+        host_info = res.get("host_info")
+        if host_info:
+            # We need a UserModel object for populate_user_kyc
+            # Minimally converting host_info to something the helper can use
+            # Or just fetch user again for safety
+            user = await UserModel.get(host_info["_id"])
+            if user:
+                res["host"] = await populate_user_kyc(user)
+        
+        streams_with_kyc.append(res)
+        
+    return streams_with_kyc
