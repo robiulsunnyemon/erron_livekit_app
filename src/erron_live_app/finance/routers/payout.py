@@ -59,6 +59,22 @@ async def add_beneficiary(
     response['user'] = user_data
     return response
 
+@router.get("/wallet/stats",status_code=status.HTTP_200_OK)
+async def get_wallet_stats(
+    current_user: UserModel = Depends(get_current_user)
+):
+    """Get current user wallet stats and global token rate."""
+    config = await PayoutConfigModel.get_config()
+    
+    # Calculate approximate fiat value
+    fiat_value = current_user.coins * config.token_rate_usd
+    
+    return {
+        "coin_balance": current_user.coins,
+        "token_rate_usd": config.token_rate_usd,
+        "estimated_fiat_value": fiat_value
+    }
+
 @router.get("/beneficiaries", response_model=List[BeneficiaryResponse])
 async def get_my_beneficiaries(
     current_user: UserModel = Depends(get_current_user)
