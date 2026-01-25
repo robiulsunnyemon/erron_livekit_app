@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, status, Depends, File, UploadFile
 from uuid import UUID
 import shutil
 import os
+from pathlib import Path
 from typing import List
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.users.schemas.user_schemas import UserResponse, ProfileResponse, ModeratorProfileResponse, ProfileUpdateRequest, KYCResponse, ModeratorResponse, PendingKYCStatsResponse, KYCUpdate
@@ -18,6 +19,8 @@ from erron_live_app.users.utils.user_role import UserRole
 # Define the router for User Management
 user_router = APIRouter(prefix="/users", tags=["Users"])
 
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
 @user_router.get("/", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
 async def get_all_users(skip: int = 0, limit: int = 20):
@@ -112,11 +115,30 @@ async def upload_profile_image(
     """
     Upload a profile image and return the URL.
     """
+
+
+    if image.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, PNG or WEBP images are allowed",
+        )
+
+        # Size validation
+    contents = await image.read()
+
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="Image size must be under 5MB",
+        )
+
+    extension = Path(image.filename).suffix
+
     profile_dir = os.path.join("uploads", "profiles")
     if not os.path.exists(profile_dir):
         os.makedirs(profile_dir)
 
-    filename = f"profile_{current_user.id}_{datetime.now().timestamp()}_{image.filename}"
+    filename = f"profile{current_user.id}{datetime.now().timestamp()}{extension}"
     file_path = os.path.join(profile_dir, filename)
     
     with open(file_path, "wb") as buffer:
@@ -139,11 +161,29 @@ async def upload_cover_image(
     """
     Upload a cover image and return the URL.
     """
+
+    if image.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, PNG or WEBP images are allowed",
+        )
+
+        # Size validation
+    contents = await image.read()
+
+    if len(contents) > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="Image size must be under 5MB",
+        )
+
+    extension = Path(image.filename).suffix
+
     cover_dir = os.path.join("uploads", "covers")
     if not os.path.exists(cover_dir):
         os.makedirs(cover_dir)
 
-    filename = f"cover_{current_user.id}_{datetime.now().timestamp()}_{image.filename}"
+    filename = f"cover{current_user.id}{datetime.now().timestamp()}{extension}"
     file_path = os.path.join(cover_dir, filename)
     
     with open(file_path, "wb") as buffer:
@@ -184,19 +224,60 @@ async def kyc_submit(
     id_back: UploadFile = File(...),
     current_user: UserModel = Depends(get_current_user)
 ):
+
+
+    if id_front.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, PNG or WEBP images are allowed",
+        )
+
+        # Size validation
+    contents_id_font = await id_front.read()
+
+    if len(contents_id_font) > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="Image size must be under 5MB",
+        )
+
+    extension_id_front = Path(id_front.filename).suffix
+
+
+
+    if id_back.content_type not in ALLOWED_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail="Only JPG, PNG or WEBP images are allowed",
+        )
+
+        # Size validation
+    contents_id_back = await id_back.read()
+
+    if len(contents_id_back) > MAX_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="Image size must be under 5MB",
+        )
+
+    extension_id_back = Path(contents_id_back.filename).suffix
+
+
+
+
     # Create KYC directory if not exists
     kyc_dir = os.path.join("uploads", "kyc")
     if not os.path.exists(kyc_dir):
         os.makedirs(kyc_dir)
 
     # Save Front ID
-    front_filename = f"front_{current_user.id}_{id_front.filename}"
+    front_filename = f"front{current_user.id}{datetime.now().timestamp()}{extension_id_front}"
     front_path = os.path.join(kyc_dir, front_filename)
     with open(front_path, "wb") as buffer:
         shutil.copyfileobj(id_front.file, buffer)
 
     # Save Back ID
-    back_filename = f"back_{current_user.id}_{id_back.filename}"
+    back_filename = f"back{current_user.id}{datetime.now().timestamp()}{extension_id_back}"
     back_path = os.path.join(kyc_dir, back_filename)
     with open(back_path, "wb") as buffer:
         shutil.copyfileobj(id_back.file, buffer)
@@ -324,21 +405,6 @@ async def update_kyc_status_by_user_id(
         kyc.rejection_reason = data.rejection_reason
 
     await kyc.save()
-
-    # Update User Verification Status
-    if kyc.user:
-        user = kyc.user
-        if hasattr(user, "fetch"):
-            user = await user.fetch()
-
-        if user:
-            if data.status == "approved":
-                user.is_verified = True
-            elif data.status == "rejected":
-                user.is_verified = False
-
-            await user.save()
-
     return kyc
 
 
