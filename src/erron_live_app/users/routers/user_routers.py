@@ -226,10 +226,28 @@ async def kyc_submit(
 ):
 
 
-    if id_front.content_type not in ALLOWED_TYPES:
+    # Robust check for id_front
+    is_front_valid = id_front.content_type in ALLOWED_TYPES
+    if not is_front_valid and id_front.content_type == "application/octet-stream":
+        if Path(id_front.filename).suffix.lower() in ['.jpg', '.jpeg', '.png', '.webp']:
+             is_front_valid = True
+
+    if not is_front_valid:
         raise HTTPException(
             status_code=400,
-            detail="Only JPG, PNG or WEBP images are allowed",
+            detail="ID Front: Only JPG, PNG or WEBP images are allowed",
+        )
+
+    # Robust check for id_back
+    is_back_valid = id_back.content_type in ALLOWED_TYPES
+    if not is_back_valid and id_back.content_type == "application/octet-stream":
+        if Path(id_back.filename).suffix.lower() in ['.jpg', '.jpeg', '.png', '.webp']:
+             is_back_valid = True
+
+    if not is_back_valid:
+        raise HTTPException(
+            status_code=400,
+            detail="ID Back: Only JPG, PNG or WEBP images are allowed",
         )
 
         # Size validation
