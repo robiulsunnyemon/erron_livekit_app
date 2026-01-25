@@ -117,7 +117,14 @@ async def upload_profile_image(
     """
 
 
-    if image.content_type not in ALLOWED_TYPES:
+    # Robust check: allow application/octet-stream if extension is valid
+    is_valid_type = image.content_type in ALLOWED_TYPES
+    if not is_valid_type and image.content_type == "application/octet-stream":
+        extension = Path(image.filename).suffix.lower()
+        if extension in ['.jpg', '.jpeg', '.png', '.webp']:
+            is_valid_type = True
+
+    if not is_valid_type:
         raise HTTPException(
             status_code=400,
             detail="Only JPG, PNG or WEBP images are allowed",
@@ -142,7 +149,7 @@ async def upload_profile_image(
     file_path = os.path.join(profile_dir, filename)
     
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+        buffer.write(contents)
     
     image_url = f"/uploads/profiles/{filename}"
     
@@ -162,7 +169,14 @@ async def upload_cover_image(
     Upload a cover image and return the URL.
     """
 
-    if image.content_type not in ALLOWED_TYPES:
+    # Robust check: allow application/octet-stream if extension is valid
+    is_valid_type = image.content_type in ALLOWED_TYPES
+    if not is_valid_type and image.content_type == "application/octet-stream":
+        extension = Path(image.filename).suffix.lower()
+        if extension in ['.jpg', '.jpeg', '.png', '.webp']:
+            is_valid_type = True
+
+    if not is_valid_type:
         raise HTTPException(
             status_code=400,
             detail="Only JPG, PNG or WEBP images are allowed",
@@ -187,7 +201,7 @@ async def upload_cover_image(
     file_path = os.path.join(cover_dir, filename)
     
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(image.file, buffer)
+        buffer.write(contents)
     
     image_url = f"/uploads/covers/{filename}"
     
@@ -263,11 +277,6 @@ async def kyc_submit(
 
 
 
-    if id_back.content_type not in ALLOWED_TYPES:
-        raise HTTPException(
-            status_code=400,
-            detail="Only JPG, PNG or WEBP images are allowed",
-        )
 
         # Size validation
     contents_id_back = await id_back.read()
@@ -278,7 +287,7 @@ async def kyc_submit(
             detail="Image size must be under 5MB",
         )
 
-    extension_id_back = Path(contents_id_back.filename).suffix
+    extension_id_back = Path(id_back.filename).suffix
 
 
 
@@ -292,13 +301,13 @@ async def kyc_submit(
     front_filename = f"front{current_user.id}{datetime.now().timestamp()}{extension_id_front}"
     front_path = os.path.join(kyc_dir, front_filename)
     with open(front_path, "wb") as buffer:
-        shutil.copyfileobj(id_front.file, buffer)
+        buffer.write(contents_id_font)
 
     # Save Back ID
     back_filename = f"back{current_user.id}{datetime.now().timestamp()}{extension_id_back}"
     back_path = os.path.join(kyc_dir, back_filename)
     with open(back_path, "wb") as buffer:
-        shutil.copyfileobj(id_back.file, buffer)
+        buffer.write(contents_id_back)
 
     # Create model entry
     # Note: Using absolute URL or relative web path. Frontend likely needs web path.
