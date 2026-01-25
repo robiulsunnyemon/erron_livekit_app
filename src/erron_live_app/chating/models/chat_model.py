@@ -1,4 +1,5 @@
-from beanie import Link, PydanticObjectId
+from uuid import UUID, uuid4
+from beanie import Link
 from pydantic import BaseModel, Field
 from datetime import datetime, timezone
 from typing import Optional, List
@@ -15,7 +16,7 @@ class ChatMessageModel(BaseCollection):
     message: Optional[str] = None
     image_url: Optional[str] = None
     is_read: bool = False
-    replied_to_id: Optional[PydanticObjectId] = None
+    replied_to_id: Optional[UUID] = None
     reactions: List[Reaction] = []
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 

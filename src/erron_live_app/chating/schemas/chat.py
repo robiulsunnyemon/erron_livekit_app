@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from uuid import UUID
 from erron_live_app.core.base.base import BaseResponse
 from erron_live_app.users.schemas.user_schemas import UserResponse
-from beanie import PydanticObjectId
 
 
 class ReactionSchema(BaseModel):
@@ -17,7 +17,7 @@ class ChatMessageResponse(BaseResponse):
     message: Optional[str] = None
     image_url: Optional[str] = None
     is_read: bool
-    replied_to_id: Optional[PydanticObjectId] = None
+    replied_to_id: Optional[UUID] = None
     reactions: List[ReactionSchema] = []
     created_at: datetime
 

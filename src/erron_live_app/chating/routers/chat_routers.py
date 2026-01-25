@@ -59,12 +59,19 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                 receiver = await UserModel.get(receiver_uuid)
 
                 if current_user and receiver:
+                    replied_to_uuid = None
+                    if replied_to_id:
+                        try:
+                            replied_to_uuid = UUID(replied_to_id)
+                        except (ValueError, TypeError):
+                            pass
+
                     chat_msg = ChatMessageModel(
                         sender=current_user.to_ref(),
                         receiver=receiver.to_ref(),
                         message=text,
                         image_url=image_url,
-                        replied_to_id=replied_to_id if replied_to_id else None
+                        replied_to_id=replied_to_uuid
                     )
                     await chat_msg.insert()
 

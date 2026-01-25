@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from beanie import PydanticObjectId
+from uuid import UUID
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
 from typing import List
@@ -12,10 +12,9 @@ router = APIRouter(
 
 @router.post("/follow/{target_id}")
 async def follow_user(target_id: str, current_user: UserModel = Depends(get_current_user)):
-    # target_id কে PydanticObjectId তে রূপান্তর
     try:
-        target_oid = PydanticObjectId(target_id)
-    except:
+        target_oid = UUID(target_id)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid User ID format")
 
     if target_id == str(current_user.id):
@@ -44,8 +43,8 @@ async def follow_user(target_id: str, current_user: UserModel = Depends(get_curr
 @router.post("/unfollow/{target_id}")
 async def unfollow_user(target_id: str, current_user: UserModel = Depends(get_current_user)):
     try:
-        target_oid = PydanticObjectId(target_id)
-    except:
+        target_oid = UUID(target_id)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid User ID format")
 
     target_user_in_list = None
@@ -123,8 +122,8 @@ async def get_social_counts(current_user: UserModel = Depends(get_current_user))
 @router.get("/{user_id}/stats")
 async def get_user_stats(user_id: str):
     try:
-        user_oid = PydanticObjectId(user_id)
-    except:
+        user_oid = UUID(user_id)
+    except ValueError:
         raise HTTPException(status_code=400, detail="Invalid User ID format")
 
     user = await UserModel.get(user_oid)
