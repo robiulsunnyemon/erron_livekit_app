@@ -19,7 +19,7 @@ from erron_live_app.users.utils.user_role import UserRole
 # Define the router for User Management
 user_router = APIRouter(prefix="/users", tags=["Users"])
 
-ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}
+ALLOWED_TYPES = {"image/jpeg", "image/png", "image/jpg", "image/webp"}
 MAX_SIZE = 5 * 1024 * 1024  # 5MB
 
 @user_router.get("/", response_model=List[UserResponse], status_code=status.HTTP_200_OK)
