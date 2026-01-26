@@ -144,7 +144,13 @@ async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str
         related_entity_id=str(new_live.id)
     )
 
-    return {"live_id": str(new_live.id), "livekit_token": token, "channel_name": channel_name}
+    return {
+        "live_id": str(new_live.id), 
+        "livekit_token": token, 
+        "channel_name": channel_name,
+        "is_premium": is_premium,
+        "entry_fee": entry_fee if is_premium else 0
+    }
 
 
 @router.post("/join/{session_id}")
