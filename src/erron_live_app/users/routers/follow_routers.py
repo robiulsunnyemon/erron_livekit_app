@@ -10,6 +10,13 @@ router = APIRouter(
 )
 
 
+def get_link_id(link):
+    """Helper to get ID from a Beanie Link (fetched or unfetched)"""
+    if hasattr(link, "ref"):
+        return str(link.ref.id)
+    return str(link.id)
+
+
 @router.post("/follow/{target_id}")
 async def follow_user(target_id: str, current_user: UserModel = Depends(get_current_user)):
     try:
@@ -25,9 +32,10 @@ async def follow_user(target_id: str, current_user: UserModel = Depends(get_curr
         raise HTTPException(status_code=404, detail="User not found")
 
     # Beanie Link চেক করার সঠিক উপায়
-    is_already_following = any(link.ref.id == target_oid for link in current_user.following)
+    is_already_following = any(get_link_id(link) == str(target_oid) for link in current_user.following)
 
     if is_already_following:
+        print(f"User {current_user.id} is already following {target_oid}")
         return {"message": "Already following this user"}
 
     current_user.following.append(target_user)
@@ -49,11 +57,12 @@ async def unfollow_user(target_id: str, current_user: UserModel = Depends(get_cu
 
     target_user_in_list = None
     for link in current_user.following:
-        if link.ref.id == target_oid:
+        if get_link_id(link) == str(target_oid):
             target_user_in_list = link
             break
 
     if not target_user_in_list:
+        print(f"User {current_user.id} not following {target_oid}, current list: {[str(l.ref.id) for l in current_user.following]}")
         raise HTTPException(status_code=400, detail="You are not following this user")
 
     target_user = await UserModel.get(target_oid)
@@ -86,7 +95,7 @@ async def get_active_priority_list(current_user: UserModel = Depends(get_current
     online_users = await UserModel.find(UserModel.is_online == True).to_list()
 
     # ২. কারেন্ট ইউজারের ফলোয়িং আইডিগুলোর একটি সেট তৈরি (দ্রুত সার্চের জন্য)
-    following_ids = {str(link.ref.id) for link in current_user.following}
+    following_ids = {get_link_id(link) for link in current_user.following}
 
     # ৩. সর্টিং: B (যাকে ফলো করছেন) লিস্টের উপরে থাকবে
     online_users.sort(key=lambda u: str(u.id) in following_ids, reverse=True)
@@ -135,3 +144,15 @@ async def get_user_stats(user_id: str):
         "follower_count": user.followers_count,
         "following_count": user.following_count
     }
+
+
+@router.get("/is-following/{target_id}")
+async def check_following_status(target_id: str, current_user: UserModel = Depends(get_current_user)):
+    try:
+        target_oid = UUID(target_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid User ID format")
+
+    is_following = any(get_link_id(link) == str(target_oid) for link in current_user.following)
+    print(f"Check Follow: User {current_user.id} following {target_id}? {is_following}")
+    return {"is_following": is_following}
