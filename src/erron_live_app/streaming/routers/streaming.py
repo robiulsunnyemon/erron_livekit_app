@@ -176,14 +176,6 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
         # If premium and NOT has_paid (regular user), we DO NOT deduct money yet.
         # They get 3 seconds free.
         
-        # Determine fee paid recorded in viewer model (0 for now if deferred)
-        recorded_fee = 0 
-        if has_paid and db_live_stream.is_premium and not (is_admin or is_moderator):
-             # This block logically unreachable with current logic unless we restore instant pay later
-             # But keeping consistent: if they somehow paid (e.g. logic change), record it.
-             # For now, if deferred, fee_paid is 0.
-             pass
-
         db_live_stream.total_views += 1
         await db_live_stream.save()
 
@@ -199,6 +191,8 @@ async def join_stream(session_id: str, current_user: UserModel = Depends(get_cur
         # We trust the DB record, but valid admins/mods always bypass
         if is_admin or is_moderator:
             has_paid = True
+        else:
+            has_paid = existing_viewer.has_paid
 
     token = create_livekit_token(
         identity=str(current_user.id),
