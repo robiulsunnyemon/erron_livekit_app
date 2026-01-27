@@ -2,6 +2,11 @@ from fastapi import FastAPI,status
 from erron_live_app.streaming.routers.streaming import router as stream_router
 from fastapi.staticfiles import StaticFiles
 import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
+
 from fastapi.middleware.cors import CORSMiddleware
 from erron_live_app.db import lifespan
 from erron_live_app.core.exceptions_handler.http_exception_handler import http_exception_handler

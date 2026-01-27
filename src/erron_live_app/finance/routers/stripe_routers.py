@@ -52,10 +52,14 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
 
     # Handle the event
+    print(f"🔔 Stripe Webhook received event: {event['type']}")
+    
     if event['type'] == 'payment_intent.succeeded':
         payment_intent = event['data']['object']
         user_id = payment_intent['metadata'].get('user_id')
         tokens = payment_intent['metadata'].get('tokens')
+
+        print(f"💳 PaymentIntent succeeded. UserID: {user_id}, Tokens: {tokens}")
 
         if user_id and tokens:
             user = await UserModel.get(user_id)
@@ -72,6 +76,10 @@ async def stripe_webhook(request: Request):
                     description=f"Stripe Topup: ${payment_intent['amount'] / 100}"
                 ).insert()
                 
-                print(f"💰 User {user.email} topped up with {tokens} tokens via Stripe.")
+                print(f"💰 User {user.email} topped up with {tokens} tokens via Stripe successfully.")
+            else:
+                print(f"❌ User not found for ID: {user_id}")
+        else:
+            print(f"⚠️ Missing metadata in PaymentIntent: user_id={user_id}, tokens={tokens}")
 
     return {"status": "success"}
