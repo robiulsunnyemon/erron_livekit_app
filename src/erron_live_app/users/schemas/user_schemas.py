@@ -30,7 +30,7 @@ class UserResponse(BaseResponse):
     followers_count: int = 0
     total_likes: int = 0
     is_verified: bool
-    profile_image: Optional[str]
+    profile_image: Optional[str] = None
     cover_image: Optional[str] = None
     bio: Optional[str] = None
     gender: Optional[str] = None
