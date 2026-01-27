@@ -1,10 +1,9 @@
 from pydantic import BaseModel
 from typing import Optional
 from datetime import datetime
-from uuid import UUID
 from erron_live_app.core.base.base import BaseResponse
 from erron_live_app.users.schemas.user_schemas import UserResponse, ModeratorResponse
-
+from pydantic import Field
 
 class LiveStartRequest(BaseModel):
     is_premium: bool = False
@@ -20,7 +19,7 @@ class LiveStreamResponse(BaseResponse):
     channel_name: str
     title: str
     category: str
-    thumbnail: str
+    thumbnail:  Optional[str] = Field(default=None)
     is_premium: bool
     entry_fee: float
     start_time: datetime
