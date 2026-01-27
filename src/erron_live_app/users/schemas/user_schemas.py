@@ -52,7 +52,7 @@ class UserResponse(BaseResponse):
 class LiveStreamSimpleResponse(BaseResponse):
     title: str = ""
     category: str = ""
-    thumbnail: str = ""
+    thumbnail: Optional[str] = None
     created_at: datetime
     total_views: int = 0
     total_likes: int = 0
