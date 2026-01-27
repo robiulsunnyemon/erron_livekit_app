@@ -189,6 +189,16 @@ async def review_report(
                     current_user.inactivated_count += 1
             
             await host.save()
+            
+            # Send Email Notification to Host
+            from erron_live_app.users.utils.email_config import send_custom_email
+            subject = f"Account Action: {data.action}"
+            content = f"Hello {host.first_name or 'User'},\n\n" \
+                      f"Your account has been set to '{data.action}' due to reports against your recent stream.\n" \
+                      f"Reason/Note: {data.note}\n\n" \
+                      f"If you believe this is a mistake, please contact support."
+            await send_custom_email(host.email, subject, content)
+
             if isinstance(current_user, ModeratorModel):
                 await current_user.save()
 

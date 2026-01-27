@@ -17,3 +17,11 @@ class TransactionResponse(BaseResponse):
 
     class Config:
         from_attributes = True
+
+class StripePaymentRequest(BaseModel):
+    amount: float # in USD (e.g. 0.99)
+    tokens: int   # number of tokens to add
+
+class StripePaymentResponse(BaseModel):
+    client_secret: str
+    payment_intent_id: str

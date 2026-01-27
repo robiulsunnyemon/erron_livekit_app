@@ -1,7 +1,7 @@
-
+import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 from pydantic import BaseModel, EmailStr
-from email.message import EmailMessage
-import aiosmtplib
 
 # 🔹 Pydantic v2 model
 class SendOtpModel(BaseModel):
@@ -13,19 +13,34 @@ class SendOtpModel(BaseModel):
 
 async def send_otp(otp_user: SendOtpModel):
     """
-    Send OTP to user's email asynchronously
+    Send OTP to user's email asynchronously using SendGrid
     """
-    message = EmailMessage()
-    message["From"] = "robiulsunyemon111@gmail.com"
-    message["To"] = otp_user.email
-    message["Subject"] = "🔑 Your OTP Code"
-    message.set_content(f"Your OTP code is: {otp_user.otp}")
-
-    await aiosmtplib.send(
-        message,
-        hostname="smtp.gmail.com",
-        port=587,
-        start_tls=True,
-        username="robiulsunyemon111@gmail.com",
-        password="bpbs pqqp lcwl tzur",
+    message = Mail(
+        from_email=os.getenv("SENDER_EMAIL", "InstaLive@erroneous.biz"),
+        to_emails=otp_user.email,
+        subject='🔑 Your OTP Code',
+        plain_text_content=f'Your OTP code is: {otp_user.otp}'
     )
+    try:
+        sg = SendGridAPIClient(os.getenv('SENDGRID_API_KEY'))
+        response = sg.send(message)
+        print(f"📧 Email sent to {otp_user.email}. Status: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Error sending email: {str(e)}")
+
+async def send_custom_email(email: str, subject: str, content: str):
+    """
+    Generic function to send custom emails
+    """
+    message = Mail(
+        from_email=os.getenv("SENDER_EMAIL", "InstaLive@erroneous.biz"),
+        to_emails=email,
+        subject=subject,
+        plain_text_content=content
+    )
+    try:
+        sg = SendGridAPIClient(os.getenv('SENDGRID_API_KEY'))
+        response = sg.send(message)
+        print(f"📧 Custom email sent to {email}. Status: {response.status_code}")
+    except Exception as e:
+        print(f"❌ Error sending custom email: {str(e)}")

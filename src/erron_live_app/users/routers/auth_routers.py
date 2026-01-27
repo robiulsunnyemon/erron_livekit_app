@@ -15,6 +15,8 @@ from uuid import UUID
 from typing import Union
 from erron_live_app.notifications.utils import send_notification
 from erron_live_app.notifications.models import NotificationType
+from erron_live_app.users.utils.email_config import send_otp
+
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -38,7 +40,7 @@ async def create_user(user: UserCreate):
     )
     await new_user.create()
     send_otp_data = SendOtpModel(email=new_user.email, otp=new_user.otp)
-    ##await send_otp(send_otp_data)
+    await send_otp(send_otp_data)
     
     # Notification: Account Created
     await send_notification(
@@ -79,7 +81,8 @@ async def create_admin(user: UserCreate):
     )
     await new_user.create()
     send_otp_data = SendOtpModel(email=new_user.email, otp=new_user.otp)
-    ##await send_otp(send_otp_data)
+    from erron_live_app.users.utils.email_config import send_otp
+    await send_otp(send_otp_data)
     return new_user
 
 
@@ -286,7 +289,8 @@ async def resend_otp(request: ResendOTPRequest):
     db_user.otp = generate_otp()
     await db_user.save()
     send_otp_data = SendOtpModel(email=db_user.email, otp=db_user.otp)
-    ##await send_otp(send_otp_data)
+    from erron_live_app.users.utils.email_config import send_otp
+    await send_otp(send_otp_data)
 
 
     return {

@@ -18,6 +18,7 @@ from erron_live_app.chating.routers.call_routers import router as call_router
 from erron_live_app.admin.routers import router as admin_router
 from erron_live_app.finance.routers.payout import router as payout_router
 from erron_live_app.notifications.routers import router as notification_router
+from erron_live_app.finance.routers.stripe_routers import router as stripe_router
 
 
 
@@ -74,3 +75,4 @@ app.include_router(call_router,prefix="/api/v1")
 app.include_router(admin_router,prefix="/api/v1")
 app.include_router(payout_router,prefix="/api/v1")
 app.include_router(notification_router,prefix="/api/v1")
+app.include_router(stripe_router,prefix="/api/v1")
