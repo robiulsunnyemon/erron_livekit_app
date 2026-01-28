@@ -24,8 +24,7 @@ from erron_live_app.admin.routers import router as admin_router
 from erron_live_app.finance.routers.payout import router as payout_router
 from erron_live_app.notifications.routers import router as notification_router
 from erron_live_app.finance.routers.stripe_routers import router as stripe_router
-
-
+from erron_live_app.users.routers.apology_routers import router as apology_router
 
 app = FastAPI(
     title="Erron Livekit API",
@@ -81,3 +80,4 @@ app.include_router(admin_router,prefix="/api/v1")
 app.include_router(payout_router,prefix="/api/v1")
 app.include_router(notification_router,prefix="/api/v1")
 app.include_router(stripe_router,prefix="/api/v1")
+app.include_router(apology_router,prefix="/api/v1")
