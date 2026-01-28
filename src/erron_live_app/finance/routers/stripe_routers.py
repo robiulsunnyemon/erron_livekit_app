@@ -6,6 +6,8 @@ from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.finance.schemas.finance import StripePaymentRequest, StripePaymentResponse
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
 from typing import Optional
+from erron_live_app.notifications.utils import send_notification
+from erron_live_app.notifications.models import NotificationType
 
 router = APIRouter(prefix="/finance/stripe", tags=["Stripe Payment"])
 
@@ -75,8 +77,26 @@ async def stripe_webhook(request: Request):
                     reason=TransactionReason.TOPUP,
                     description=f"Stripe Topup: ${payment_intent['amount'] / 100}"
                 ).insert()
+
+                # Notification: Payout Requested
+                await send_notification(
+                    user=current_user,
+                    title="Payout Requested",
+                    body=f"Your request for ${fiat_amount:.2f} has been submitted.",
+                    type=NotificationType.FINANCE,
+                    related_entity_id=str(payout_req.id)
+                )
                 
                 print(f"💰 User {user.email} topped up with {tokens} tokens via Stripe successfully.")
+                
+                # Send Notification
+                await send_notification(
+                    user=user,
+                    title="Token Top-up Successful",
+                    body=f"You have successfully purchased {tokens} tokens via Stripe.",
+                    type=NotificationType.FINANCE,
+                    related_entity_id=payment_intent['id']
+                )
             else:
                 print(f"❌ User not found for ID: {user_id}")
         else:

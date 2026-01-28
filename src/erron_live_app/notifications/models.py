@@ -11,6 +11,7 @@ class NotificationType(str, Enum):
     LIVE = "LIVE"
     FINANCE = "FINANCE"
     SYSTEM = "SYSTEM"
+    SOCIAL = "SOCIAL"
 
 class NotificationModel(BaseCollection):
     user: Link[UserModel]

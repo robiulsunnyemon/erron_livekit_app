@@ -3,6 +3,8 @@ from uuid import UUID
 from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
 from typing import List
+from erron_live_app.notifications.utils import send_notification
+from erron_live_app.notifications.models import NotificationType
 
 router = APIRouter(
     prefix="/social",
@@ -44,6 +46,15 @@ async def follow_user(target_id: str, current_user: UserModel = Depends(get_curr
 
     await current_user.save()
     await target_user.save()
+
+    # Send Notification to Target User
+    await send_notification(
+        user=target_user,
+        title="New Follower",
+        body=f"{current_user.first_name} {current_user.last_name or ''} started following you.",
+        type=NotificationType.SOCIAL,
+        related_entity_id=str(current_user.id)
+    )
 
     return {"message": "Followed successfully"}
 

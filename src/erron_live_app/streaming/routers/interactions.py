@@ -11,6 +11,8 @@ from typing import Union, Optional
 from uuid import UUID
 from erron_live_app.streaming.models.streaming import LiveStreamModel, LiveLikeModel, LiveCommentModel, LiveRatingModel, \
     LiveViewerModel, LiveStreamReportModel, LiveStreamReportReviewModel
+from erron_live_app.notifications.utils import send_notification
+from erron_live_app.notifications.models import NotificationType
 
 router = APIRouter(prefix="/streaming/interactions", tags=["Interactions"])
 
@@ -29,6 +31,20 @@ async def like_stream(session_id: str, current_user: UserModel = Depends(get_cur
     stream.total_likes += 1
     await stream.save()
     
+    # Send Notification to Host
+    if stream.host:
+        host = stream.host
+        if hasattr(host, "fetch"):
+             host = await host.fetch()
+        if host and host.id != current_user.id:
+            await send_notification(
+                user=host,
+                title="New Like!",
+                body=f"{current_user.first_name} liked your live stream.",
+                type=NotificationType.LIVE,
+                related_entity_id=str(stream.id)
+            )
+
     return {"user":current_user,"status": "liked", "total_likes": stream.total_likes}
 
 @router.post("/comment",status_code=status.HTTP_201_CREATED)
@@ -45,6 +61,20 @@ async def comment_stream(session_id: str, content: str, current_user: UserModel 
 
     stream.total_comments += 1
     await stream.save()
+
+    # Send Notification to Host
+    if stream.host:
+        host = stream.host
+        if hasattr(host, "fetch"):
+             host = await host.fetch()
+        if host and host.id != current_user.id:
+            await send_notification(
+                user=host,
+                title="New Comment",
+                body=f"{current_user.first_name} commented: {content[:30]}...",
+                type=NotificationType.LIVE,
+                related_entity_id=str(stream.id)
+            )
 
     return {
         "user":current_user,
