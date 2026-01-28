@@ -78,15 +78,7 @@ async def stripe_webhook(request: Request):
                     description=f"Stripe Topup: ${payment_intent['amount'] / 100}"
                 ).insert()
 
-                # Notification: Payout Requested
-                await send_notification(
-                    user=current_user,
-                    title="Payout Requested",
-                    body=f"Your request for ${fiat_amount:.2f} has been submitted.",
-                    type=NotificationType.FINANCE,
-                    related_entity_id=str(payout_req.id)
-                )
-                
+
                 print(f"💰 User {user.email} topped up with {tokens} tokens via Stripe successfully.")
                 
                 # Send Notification
