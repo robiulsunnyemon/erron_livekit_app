@@ -5,7 +5,6 @@ from erron_live_app.users.utils.get_current_user import get_current_user
 from erron_live_app.users.models.user_models import UserModel
 from erron_live_app.finance.schemas.finance import StripePaymentRequest, StripePaymentResponse
 from erron_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
-from typing import Optional
 from erron_live_app.notifications.utils import send_notification
 from erron_live_app.notifications.models import NotificationType
 

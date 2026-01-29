@@ -331,7 +331,7 @@ async def stop_stream(session_id: str, current_user: Union[UserModel, ModeratorM
     # Notification: Live Ended
     # We send to host (if they didn't stop it themselves? OR just a summary)
     if live_session.host:
-        host_user = await live_session.host.fetch()
+        host_user = live_session.host
         if host_user:
             await send_notification(
                 user=host_user,

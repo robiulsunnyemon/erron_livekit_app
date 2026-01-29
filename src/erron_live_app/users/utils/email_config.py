@@ -16,7 +16,7 @@ async def send_otp(otp_user: SendOtpModel):
     Send OTP to user's email asynchronously using SendGrid
     """
     message = Mail(
-        from_email=os.getenv("SENDER_EMAIL", "InstaLive@erroneous.biz"),
+        from_email=os.getenv("SENDER_EMAIL"),
         to_emails=otp_user.email,
         subject='🔑 Your OTP Code',
         plain_text_content=f'Your OTP code is: {otp_user.otp}'
