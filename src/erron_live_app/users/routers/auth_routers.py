@@ -45,7 +45,7 @@ async def create_user(user: UserCreate):
     # Notification: Account Created
     await send_notification(
         user=new_user,
-        title="Welcome to Erron Live!",
+        title="Welcome to InstaLive!",
         body="Thank you for creating an account. Please verify your email.",
         type=NotificationType.ACCOUNT
     )
