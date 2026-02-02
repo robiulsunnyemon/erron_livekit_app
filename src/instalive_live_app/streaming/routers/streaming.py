@@ -25,7 +25,7 @@ LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 
 
 # --- Helper: LiveKit Token Generator ---
-def create_livekit_token(identity: str, name: str, room_name: str, can_publish: bool):
+def create_livekit_token(identity: str, name: str, room_name: str, can_publish: bool, can_subscribe: bool = True):
     grant = api.AccessToken(LIVEKIT_API_KEY, LIVEKIT_API_SECRET) \
         .with_identity(identity) \
         .with_name(name)
@@ -35,7 +35,7 @@ def create_livekit_token(identity: str, name: str, room_name: str, can_publish: 
         room=room_name,
         can_publish=can_publish,
         can_publish_data=True,
-        can_subscribe=True,
+        can_subscribe=can_subscribe,
     )
     grant.with_grants(permissions)
     return grant.to_jwt()
@@ -218,7 +218,8 @@ async def join_stream(session_id: str, request: Request):
         identity=identity,
         name=name,
         room_name=db_live_stream.channel_name,
-        can_publish=False
+        can_publish=False,
+        can_subscribe=has_paid # Server-side gating: restrict subscription if not paid
     )
 
     return {
@@ -298,6 +299,22 @@ async def pay_stream_fee(session_id: str, current_user: UserModel = Depends(get_
 
     # Update Viewer Record
     viewer_record.has_paid = True
+    await viewer_record.save()
+
+    # Issue NEW token with can_subscribe=True
+    new_token = create_livekit_token(
+        identity=str(current_user.id),
+        name=f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or "User",
+        room_name=db_live_stream.channel_name,
+        can_publish=False,
+        can_subscribe=True
+    )
+
+    return {
+        "message": "Payment successful",
+        "livekit_token": new_token,
+        "balance": current_user.coins
+    }
     viewer_record.fee_paid = db_live_stream.entry_fee
     await viewer_record.save()
 
@@ -378,7 +395,7 @@ async def resume_stream(session_id: str, current_user: Union[UserModel, Moderato
             details=f"Forcefully resumed stream {live_session.channel_name}"
         )
 
-    return {"message": "Stream ended successfully"}
+    return {"message": "Stream resumed successfully"}
 
 
 

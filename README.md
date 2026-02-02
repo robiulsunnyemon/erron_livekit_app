@@ -1,4 +1,4 @@
-# Erron LiveKit Project
+# InstaLive Project
 
 A comprehensive Live Streaming application backend built with **FastAPI**, **MongoDB (Beanie)**, and **LiveKit**. This project supports real-time video streaming, interactive chat, virtual gifting, user authentication, and administrative controls.
 
@@ -261,6 +261,6 @@ A comprehensive Live Streaming application backend built with **FastAPI**, **Mon
     ```
 4.  **Run the Server**
     ```bash
-    uvicorn erron_live_app.main:app --reload
+    uvicorn instalive_live_app.main:app --reload
     ```
     Access API Docs at `http://localhost:8000/docs`
