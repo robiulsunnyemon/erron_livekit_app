@@ -34,8 +34,7 @@ async def like_stream(session_id: str, current_user: UserModel = Depends(get_cur
     # Send Notification to Host
     if stream.host:
         host = stream.host
-        if hasattr(host, "fetch"):
-             host = await host.fetch()
+        # Refresh not needed if we check host.id or name directly
         if host and host.id != current_user.id:
             await send_notification(
                 user=host,
@@ -65,8 +64,7 @@ async def comment_stream(session_id: str, content: str, current_user: UserModel 
     # Send Notification to Host
     if stream.host:
         host = stream.host
-        if hasattr(host, "fetch"):
-             host = await host.fetch()
+        # Refresh not needed
         if host and host.id != current_user.id:
             await send_notification(
                 user=host,
@@ -112,8 +110,7 @@ async def report_stream(
     # Increase Host Shady Score
     if stream.host:
         host = stream.host
-        if hasattr(host, "fetch"):
-            host = await host.fetch()
+        # Refresh not needed
         if host:
             if host.shady is None:
                 host.shady = 0.0
@@ -201,8 +198,7 @@ async def review_report(
         # Decrease Host Shady Score on Dismiss
         if report.session and report.session.host:
             host = report.session.host
-            if hasattr(host, "fetch"):
-                host = await host.fetch()
+            # Refresh not needed
             if host:
                 if host.shady is None:
                     host.shady = 0.0
@@ -216,8 +212,7 @@ async def review_report(
     # Execute Action on the Host (Target User)
     if data.action in ["SUSPEND", "INACTIVE"]:
         host = report.session.host
-        if hasattr(host, "fetch"):
-            host = await host.fetch()
+        # Refresh not needed
         if host:
             if data.action == "SUSPEND":
                 host.account_status = AccountStatus.SUSPEND

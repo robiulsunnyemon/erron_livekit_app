@@ -40,10 +40,10 @@ async def send_coins(
     await host_user.update({"$inc": {UserModel.coins: amount}})
     await stream.update({"$inc": {LiveStreamModel.earn_coins: amount}})
 
-    # Refresh local objects
-    await current_user.fetch()
-    await host_user.fetch()
-    await stream.fetch()
+    # Update local objects for response consistency (DB already updated atomically)
+    current_user.coins -= amount
+    host_user.coins += amount
+    stream.earn_coins += amount
 
     # 4. Log Gift (Coin Transfer)
     gift_log = GiftLogModel(

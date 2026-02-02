@@ -102,8 +102,8 @@ async def start_stream(is_premium: bool, entry_fee: int,title:str,category:str, 
         
         # Atomic decrement
         await current_user.update({"$inc": {UserModel.coins: -int(entry_fee)}})
-        # Fetch updated user to ensure local object is sane (optional but good)
-        await current_user.fetch()
+        # Update local object state for consistency
+        current_user.coins -= int(entry_fee)
 
     channel_name = f"live_{current_user.id}_{int(time.time())}"
     token = create_livekit_token(
