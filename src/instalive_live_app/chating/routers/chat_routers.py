@@ -277,7 +277,7 @@ async def upload_chat_image(request: Request, file: UploadFile = File(...), curr
     return {"image_url": image_url}
 
 
-@router.delete("all_message",status_code=status.HTTP_200_OK)
-async def delete_message():
-    await ChatMessageModel.delete_all()
-    return {"message":"successfully deleted all message"}
+# @router.delete("all_message",status_code=status.HTTP_200_OK)
+# async def delete_message():
+#     await ChatMessageModel.delete_all()
+#     return {"message":"successfully deleted all message"}
