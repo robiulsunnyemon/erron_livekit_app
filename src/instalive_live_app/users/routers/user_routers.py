@@ -486,13 +486,16 @@ async def get_all_moderators(skip: int = 0, limit: int = 20):
 
 
 @user_router.delete("/{user_id}", status_code=status.HTTP_200_OK)
-async def delete_user(user_id: str, current_user: UserModel = Depends(get_current_user)):
+async def delete_user(user_id: str, current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)):
     """
     Permanently delete a user from the database using their ID.
-    Only Admins can perform this action.
+    Only Admins and Moderators can perform this action.
     """
-    if current_user.role != UserRole.ADMIN:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins can delete users")
+    is_admin = isinstance(current_user, UserModel) and current_user.role == UserRole.ADMIN
+    is_mod = isinstance(current_user, ModeratorModel)
+
+    if not is_admin and not is_mod:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only admins and moderators can delete users")
 
     # First, verify if the user exists before attempting deletion
     user = await UserModel.get(user_id)
