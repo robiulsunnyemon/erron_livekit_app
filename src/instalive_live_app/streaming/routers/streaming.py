@@ -271,10 +271,10 @@ async def pay_stream_fee(session_id: str, current_user: UserModel = Depends(get_
     # Update stream earnings - also should be atomic if possible, but stream object is smaller risk
     await db_live_stream.update({"$inc": {LiveStreamModel.earn_coins: int(db_live_stream.entry_fee)}})
 
-    # Refresh local objects
-    await current_user.fetch()
-    await host_user.fetch()
-    await db_live_stream.fetch()
+    # Update local objects for response consistency (DB already updated atomically)
+    current_user.coins -= int(db_live_stream.entry_fee)
+    host_user.coins += int(db_live_stream.entry_fee)
+    db_live_stream.earn_coins += int(db_live_stream.entry_fee)
 
     # Log Transactions
     # Debit for Viewer
