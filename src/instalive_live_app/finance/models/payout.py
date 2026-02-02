@@ -56,7 +56,7 @@ class PayoutRequestModel(BaseCollection):
     user: Link[UserModel]
     beneficiary: Link[BeneficiaryModel]
     
-    amount_coins: float
+    amount_coins: int
     amount_fiat: float  # Value in USD
     platform_fee: float  # Fee deducted in USD
     final_amount: float  # Final amount to be sent in USD

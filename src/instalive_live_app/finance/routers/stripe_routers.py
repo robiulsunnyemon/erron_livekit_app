@@ -88,7 +88,7 @@ async def stripe_webhook(request: Request):
                 # Record transaction
                 await TransactionModel(
                     user=user,
-                    amount=float(tokens),
+                    amount=int(tokens),
                     transaction_type=TransactionType.CREDIT,
                     reason=TransactionReason.TOPUP,
                     description=f"Stripe Topup: ${payment_intent['amount'] / 100}"

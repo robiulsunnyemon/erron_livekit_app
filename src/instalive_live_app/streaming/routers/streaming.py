@@ -82,7 +82,7 @@ async def livekit_webhook(request: Request):
 from instalive_live_app.admin.utils import check_feature_access, log_admin_action
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
-async def start_stream(is_premium: bool, entry_fee: float,title:str,category:str, current_user: UserModel = Depends(get_current_user)):
+async def start_stream(is_premium: bool, entry_fee: int,title:str,category:str, current_user: UserModel = Depends(get_current_user)):
     """হোস্টের জন্য লাইভ শুরু করার এন্ডপয়েন্ট"""
     
     # Emergency Switch Check

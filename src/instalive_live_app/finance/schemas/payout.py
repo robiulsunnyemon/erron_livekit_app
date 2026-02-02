@@ -41,7 +41,7 @@ class PayoutConfigUpdate(BaseModel):
 # --- Payout Request Schemas ---
 
 class PayoutRequestCreate(BaseModel):
-    amount_coins: float
+    amount_coins: int
     beneficiary_id: UUID
 
 class PayoutRequestResponse(BaseResponse):
@@ -49,7 +49,7 @@ class PayoutRequestResponse(BaseResponse):
     # We might embed valid Beneficiary details, or just ID. For dashboard, details are useful.
     beneficiary: Optional[BeneficiaryResponse] = None
     
-    amount_coins: float
+    amount_coins: int
     amount_fiat: float
     platform_fee: float
     final_amount: float
