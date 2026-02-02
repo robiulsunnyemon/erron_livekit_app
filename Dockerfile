@@ -21,4 +21,4 @@ ENV PYTHONPATH=/app/src:$PYTHONPATH
 EXPOSE 8000
 
 # ---- Run the app ----
-CMD ["uvicorn", "erron_live_app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "instalive_live_app.main:app", "--host", "0.0.0.0", "--port", "8000"]

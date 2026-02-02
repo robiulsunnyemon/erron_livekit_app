@@ -1,5 +1,5 @@
 [project]
-name = "erron-live-app"
+name = "instalive-live-app"
 version = "0.1.0"
 description = ""
 authors = [
@@ -22,7 +22,7 @@ dependencies = [
 ]
 
 [tool.poetry]
-packages = [{include = "erron_live_app", from = "src"}]
+packages = [{include = "instalive_live_app", from = "src"}]
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
