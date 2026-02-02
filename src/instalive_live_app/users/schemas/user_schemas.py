@@ -41,7 +41,7 @@ class UserResponse(BaseResponse):
     created_at: datetime
     updated_at: datetime
     role: Optional[UserRole] = UserRole.USER
-    otp: Optional[str]
+
     account_status: AccountStatus
     kyc: Optional["KYCSimpleResponse"] = None
 

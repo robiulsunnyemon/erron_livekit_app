@@ -50,12 +50,7 @@ async def create_user(user: UserCreate):
         type=NotificationType.ACCOUNT
     )
     
-    # EXCLUDE OTP and password from response for security
-    response_data = new_user.model_dump()
-    if "otp" in response_data: del response_data["otp"]
-    if "password" in response_data: del response_data["password"]
-    
-    return response_data
+    return UserResponse.model_validate(new_user)
 
 
 
@@ -222,12 +217,7 @@ async def verify_otp(user:VerifyOTP):
         type=NotificationType.ACCOUNT
     )
     
-    # Exclude OTP and password
-    response_user = db_user.model_dump()
-    if "otp" in response_user: del response_user["otp"]
-    if "password" in response_user: del response_user["password"]
-    
-    return {"message":"Verification successful","data":response_user}
+    return {"message":"Verification successful","data":UserResponse.model_validate(db_user)}
 
 
 
@@ -273,14 +263,9 @@ async def resend_otp(request: ResendOTPRequest):
     await send_otp(send_otp_data)
 
 
-    # Exclude OTP and password from response
-    user_data = db_user.model_dump()
-    if "otp" in user_data: del user_data["otp"]
-    if "password" in user_data: del user_data["password"]
-
     return {
         "message": "A 6 digit otp has been sent to your email.",
-        "data": user_data
+        "data": UserResponse.model_validate(db_user)
     }
 
 
