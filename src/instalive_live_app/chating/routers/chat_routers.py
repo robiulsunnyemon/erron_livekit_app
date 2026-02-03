@@ -30,9 +30,15 @@ class ConnectionManager:
 
     async def ensure_redis(self):
         if not self.redis:
-            self.redis = redis.from_url(REDIS_URL, decode_responses=True)
-            self.pubsub_task = asyncio.create_task(self._listen_to_redis())
-            logger.info("Connected to Redis for Chat Pub/Sub")
+            try:
+                self.redis = redis.from_url(REDIS_URL, decode_responses=True)
+                # Test connection
+                await self.redis.ping()
+                self.pubsub_task = asyncio.create_task(self._listen_to_redis())
+                logger.info("Connected to Redis for Chat Pub/Sub")
+            except Exception as e:
+                logger.warning(f"Failed to connect to Redis: {e}. Falling back to local-only chat.")
+                self.redis = None
 
     async def _listen_to_redis(self):
         ps = self.redis.pubsub()
