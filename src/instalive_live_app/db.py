@@ -1,5 +1,8 @@
 import os
 from contextlib import asynccontextmanager
+import logging
+
+logger = logging.getLogger(__name__)
 from fastapi import FastAPI
 from motor.motor_asyncio import AsyncIOMotorClient
 from beanie import init_beanie
@@ -53,7 +56,7 @@ async def lifespan(app: FastAPI):
         database=client[DATABASE_NAME],
         document_models=MODELS,
     )
-    print(f"✅ Connected to MongoDB: {DATABASE_NAME}")
+    logger.info(f"Connected to MongoDB: {DATABASE_NAME}")
 
     # ----------------------------------------
     # try:
@@ -66,4 +69,4 @@ async def lifespan(app: FastAPI):
     yield
 
     client.close()
-    print("👋 MongoDB connection closed.")
+    logger.info("MongoDB connection closed.")

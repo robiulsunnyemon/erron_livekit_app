@@ -1,12 +1,7 @@
-from fastapi import FastAPI,status
+from fastapi import FastAPI
 from instalive_live_app.streaming.routers.streaming import router as stream_router
 from fastapi.staticfiles import StaticFiles
-import os
 from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
-
 from fastapi.middleware.cors import CORSMiddleware
 from instalive_live_app.db import lifespan
 from instalive_live_app.core.exceptions_handler.http_exception_handler import http_exception_handler
@@ -25,7 +20,9 @@ from instalive_live_app.finance.routers.payout import router as payout_router
 from instalive_live_app.notifications.routers import router as notification_router
 from instalive_live_app.finance.routers.stripe_routers import router as stripe_router
 from instalive_live_app.users.routers.apology_routers import router as apology_router
-
+# Load environment variables
+import os
+load_dotenv()
 app = FastAPI(
     title="InstaLive API",
     description="Real-time Streaming Platform API",

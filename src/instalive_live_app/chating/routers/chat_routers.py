@@ -1,9 +1,11 @@
 import json
 import os
 import uuid
-from typing import List, Dict
+import asyncio
+import logging
+from typing import List, Dict, Optional
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Request,status
+from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect, UploadFile, File, Request, status
 from instalive_live_app.users.utils.get_current_user import get_current_user, get_ws_current_user
 from instalive_live_app.users.models.user_models import UserModel
 from instalive_live_app.users.schemas.user_schemas import UserResponse
@@ -11,26 +13,59 @@ from instalive_live_app.chating.models.chat_model import ChatMessageModel
 from instalive_live_app.chating.schemas.chat import ChatMessageResponse, ConversationResponse
 from instalive_live_app.users.utils.populate_kyc import populate_user_kyc
 from beanie.operators import Or, And
+import redis.asyncio as redis
+
+logger = logging.getLogger(__name__)
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
-# WebSocket Connection Manager
+# WebSocket Connection Manager with Redis Pub/Sub
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
+        self.redis: Optional[redis.Redis] = None
+        self.pubsub_task: Optional[asyncio.Task] = None
+
+    async def ensure_redis(self):
+        if not self.redis:
+            self.redis = redis.from_url(REDIS_URL, decode_responses=True)
+            self.pubsub_task = asyncio.create_task(self._listen_to_redis())
+            logger.info("Connected to Redis for Chat Pub/Sub")
+
+    async def _listen_to_redis(self):
+        ps = self.redis.pubsub()
+        await ps.subscribe("chat_updates")
+        try:
+            async for message in ps.listen():
+                if message["type"] == "message":
+                    data = json.loads(message["data"])
+                    receiver_id = data.get("receiver_id")
+                    if receiver_id in self.active_connections:
+                        await self.active_connections[receiver_id].send_json(data)
+        except Exception as e:
+            logger.error(f"Redis PubSub Error: {e}")
+        finally:
+            await ps.unsubscribe("chat_updates")
 
     async def connect(self, user_id: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections[user_id] = websocket
+        await self.ensure_redis()
 
     def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
 
-    async def send_personal_message(self, message: dict, user_id: str):
-        if user_id in self.active_connections:
-            websocket = self.active_connections[user_id]
-            await websocket.send_json(message)
+    async def broadcast_to_redis(self, message: dict):
+        if self.redis:
+            await self.redis.publish("chat_updates", json.dumps(message))
+        else:
+            # Fallback for local-only if Redis is missing
+            receiver_id = message.get("receiver_id")
+            if receiver_id in self.active_connections:
+                await self.active_connections[receiver_id].send_json(message)
 
 manager = ConnectionManager()
 
@@ -38,14 +73,29 @@ manager = ConnectionManager()
 async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Depends(get_ws_current_user)):
     user_id = str(current_user.id)
     await manager.connect(user_id, websocket)
+    
+    # Heartbeat task
+    async def heartbeat():
+        try:
+            while True:
+                await asyncio.sleep(30)
+                await websocket.send_json({"type": "ping"})
+        except Exception:
+            pass
+
+    heartbeat_task = asyncio.create_task(heartbeat())
+    
     try:
         while True:
             data = await websocket.receive_text()
             message_data = json.loads(data)
             
             msg_type = message_data.get("type", "message")
-            receiver_id = message_data.get("receiver_id")
             
+            if msg_type == "pong":
+                continue
+                
+            receiver_id = message_data.get("receiver_id")
             if not receiver_id:
                 continue
 
@@ -88,10 +138,12 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                         "reactions": []
                     }
 
-                    # Send to receiver if online
-                    await manager.send_personal_message(payload, receiver_id)
-                    # Send back to sender for confirmation
-                    await manager.send_personal_message(payload, user_id)
+                    # Broadcast via Redis (handles multi-instance)
+                    await manager.broadcast_to_redis(payload)
+                    # Also notify sender (this handles them whether they are on this instance or not)
+                    # However, broadcast_to_redis already sends it to the receiver_id.
+                    # We might need to send to sender too if they are on a different instance.
+                    await manager.broadcast_to_redis({**payload, "receiver_id": user_id})
 
             elif msg_type == "reaction":
                 message_id = message_data.get("message_id")
@@ -117,14 +169,16 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                         "receiver_id": receiver_id # To identify which room to broadcast in
                     }
                     
-                    await manager.send_personal_message(payload, receiver_id)
-                    await manager.send_personal_message(payload, user_id)
+                    await manager.broadcast_to_redis(payload)
+                    await manager.broadcast_to_redis({**payload, "receiver_id": user_id})
 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
     except Exception as e:
-        print(f"WebSocket Loop Error: {e}")
+        logger.error(f"WebSocket Loop Error for user {user_id}: {e}")
         manager.disconnect(user_id)
+    finally:
+        heartbeat_task.cancel()
 
 @router.get("/active-users", response_model=List[UserResponse])
 async def get_active_users(current_user: UserModel = Depends(get_current_user)):

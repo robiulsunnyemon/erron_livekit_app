@@ -1,0 +1,15 @@
+*.pyc
+__pycache__/
+.venv/
+env/
+.env
+*.log
+.DS_Store
+.git/
+.idea/
+.vscode/
+uploads/
+poetry.lock
+README.md
+Dockerfile
+docker-compose.yml

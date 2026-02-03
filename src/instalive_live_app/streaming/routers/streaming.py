@@ -1,5 +1,6 @@
 import os
 import time
+import logging
 from datetime import datetime, timezone
 from typing import cast, List, Union, Optional
 from fastapi import APIRouter, status, HTTPException, Depends, Request
@@ -17,6 +18,7 @@ from instalive_live_app.users.utils.populate_kyc import populate_user_kyc
 from instalive_live_app.notifications.utils import send_notification
 from instalive_live_app.notifications.models import NotificationType
 
+logger = logging.getLogger(__name__)
 load_dotenv()
 router = APIRouter(prefix="/streaming", tags=["Livestream"])
 
@@ -61,7 +63,7 @@ async def livekit_webhook(request: Request):
         event = receiver.receive(body.decode("utf-8"), auth_header)
 
     except Exception as e:
-        print(f"Webhook Error: {e}")
+        logger.error(f"Webhook Verification Error: {e}")
         raise HTTPException(status_code=400, detail="Verification failed")
 
     # বাকি লজিক আগের মতোই থাকবে

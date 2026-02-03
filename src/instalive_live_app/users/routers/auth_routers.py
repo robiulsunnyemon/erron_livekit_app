@@ -18,6 +18,9 @@ from instalive_live_app.notifications.models import NotificationType
 from instalive_live_app.users.utils.email_config import send_otp
 
 
+import logging
+
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
 
@@ -94,8 +97,8 @@ async def create_moderator(data: ModeratorCreate, current_user: UserModel = Depe
     )
     await new_mod.insert()
 
-    # Log password for "email" sending (In real app, trigger email sending service here)
-    print(f"📧 Sending credentials to {data.email}: Username: {data.username}, Password: {data.password}")
+    # Credential sending logic (In real app, trigger email sending service here)
+    logger.info(f"Credential setup for {new_mod.email}")
 
     await log_admin_action(
         actor=current_user,

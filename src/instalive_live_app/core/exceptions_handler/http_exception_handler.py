@@ -1,6 +1,9 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # Handler for specific HTTP exceptions (e.g., 404, 403, 401)
@@ -13,9 +16,7 @@ async def http_exception_handler(_: Request, exc: Exception):
 
     # Check if the exception is an instance of StarletteHTTPException
     if isinstance(exc, StarletteHTTPException):
-        print(f"status:error")
-        print(f"message:{exc.detail}")
-        print(f"code:{exc.status_code}")
+        logger.error(f"HTTP Error: {exc.status_code} - {exc.detail}")
 
         return JSONResponse(
             status_code=exc.status_code,
