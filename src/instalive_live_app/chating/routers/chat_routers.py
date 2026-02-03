@@ -167,16 +167,22 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                     chat_msg.reactions.append(Reaction(user_id=user_id, emoji=emoji))
                     await chat_msg.save()
 
+                    # Determine who to send the reaction to
+                    # The reaction should go to both the sender and receiver of the original message
+                    msg_sender_id = str(chat_msg.sender.id)
+                    msg_receiver_id = str(chat_msg.receiver.id)
+                    
                     payload = {
                         "type": "reaction",
                         "message_id": message_id,
                         "user_id": user_id,
                         "emoji": emoji,
-                        "receiver_id": receiver_id # To identify which room to broadcast in
                     }
                     
-                    await manager.broadcast_to_redis(payload)
-                    await manager.broadcast_to_redis({**payload, "receiver_id": user_id})
+                    # Send to the sender of the original message
+                    await manager.broadcast_to_redis({**payload, "receiver_id": msg_sender_id})
+                    # Send to the receiver of the original message
+                    await manager.broadcast_to_redis({**payload, "receiver_id": msg_receiver_id})
 
     except WebSocketDisconnect:
         manager.disconnect(user_id)
