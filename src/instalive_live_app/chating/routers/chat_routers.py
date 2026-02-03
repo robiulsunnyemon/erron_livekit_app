@@ -70,8 +70,12 @@ class ConnectionManager:
         else:
             # Fallback for local-only if Redis is missing
             receiver_id = message.get("receiver_id")
+            # If we are in local mode, we need to send to the target receiver
             if receiver_id in self.active_connections:
-                await self.active_connections[receiver_id].send_json(message)
+                try:
+                    await self.active_connections[receiver_id].send_json(message)
+                except Exception as e:
+                    logger.error(f"Local Send Error: {e}")
 
 manager = ConnectionManager()
 
