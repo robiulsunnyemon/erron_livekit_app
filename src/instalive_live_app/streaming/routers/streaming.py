@@ -24,6 +24,53 @@ router = APIRouter(prefix="/streaming", tags=["Livestream"])
 
 LIVEKIT_API_KEY = os.getenv("LIVEKIT_API_KEY")
 LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
+LIVEKIT_URL = os.getenv("LIVEKIT_URL", "http://localhost:7880")
+
+async def delayed_kick_participant(session_id: str, participant_identity: str, timeout: int = 8):
+    """
+    Waits for a timeout and then kicks the participant if they haven't paid for a premium stream.
+    Used for the 3-second preview feature.
+    """
+    await asyncio.sleep(timeout)
+    
+    try:
+        db_stream = await LiveStreamModel.get(session_id)
+        if not db_stream or db_stream.status != "live":
+            return
+
+        if not db_stream.is_premium:
+            return
+
+        is_guest = participant_identity.startswith("guest_")
+        should_kick = False
+
+        if is_guest:
+            # Guests are always kicked from premium streams after preview
+            should_kick = True
+        else:
+            # Check if registered user has paid
+            from beanie import PydanticObjectId
+            try:
+                user_oid = PydanticObjectId(participant_identity)
+                viewer = await LiveViewerModel.find_one(
+                    LiveViewerModel.session.id == db_stream.id,
+                    LiveViewerModel.user.id == user_oid
+                )
+                if not viewer or not viewer.has_paid:
+                    should_kick = True
+            except Exception as e:
+                logger.error(f"Error checking viewer payment status for {participant_identity}: {e}")
+                should_kick = True
+
+        if should_kick:
+            # LiveKit URL for service client should be https for cloud
+            service_url = LIVEKIT_URL.replace("wss://", "https://").replace("ws://", "http://")
+            room_service = api.RoomServiceClient(service_url, LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
+            await room_service.remove_participant(db_stream.channel_name, participant_identity)
+            logger.info(f"Kicked {participant_identity} from {db_stream.channel_name} (Premium Enforcement)")
+            
+    except Exception as e:
+        logger.error(f"Error in delayed_kick_participant for {participant_identity}: {e}")
 
 
 # --- Helper: LiveKit Token Generator ---
@@ -221,8 +268,13 @@ async def join_stream(session_id: str, request: Request):
         name=name,
         room_name=db_live_stream.channel_name,
         can_publish=False,
-        can_subscribe=has_paid # Server-side gating: restrict subscription if not paid
+        can_subscribe=True # Always allow subscribe initially for the 3s preview
     )
+
+    # SECURE ENFORCEMENT: Start a background task to kick if not paid
+    if not has_paid:
+        import asyncio
+        asyncio.create_task(delayed_kick_participant(str(db_live_stream.id), identity))
 
     return {
         "livekit_token": token, 
