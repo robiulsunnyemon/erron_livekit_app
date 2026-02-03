@@ -12,7 +12,7 @@ RUN pip install --no-cache-dir poetry
 
 # ---- dependencies install (--no-root ) ----
 RUN poetry config virtualenvs.create false \
-    && poetry install --no-interaction --no-ansi
+    && poetry install --no-root --no-interaction --no-ansi
 
 # ---- PYTHONPATH ----
 ENV PYTHONPATH=/app/src:$PYTHONPATH

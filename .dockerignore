@@ -10,6 +10,6 @@ env/
 .vscode/
 uploads/
 poetry.lock
-README.md
+# README.md
 Dockerfile
 docker-compose.yml
