@@ -150,10 +150,6 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
 
                     # Broadcast via Redis (handles multi-instance)
                     await manager.broadcast_to_redis(payload)
-                    # Also notify sender (this handles them whether they are on this instance or not)
-                    # However, broadcast_to_redis already sends it to the receiver_id.
-                    # We might need to send to sender too if they are on a different instance.
-                    await manager.broadcast_to_redis({**payload, "receiver_id": user_id})
 
             elif msg_type == "reaction":
                 message_id = message_data.get("message_id")
