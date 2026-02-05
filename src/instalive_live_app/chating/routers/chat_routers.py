@@ -48,8 +48,13 @@ class ConnectionManager:
                 if message["type"] == "message":
                     data = json.loads(message["data"])
                     receiver_id = data.get("receiver_id")
-                    if receiver_id in self.active_connections:
+                    if receiver_id and receiver_id in self.active_connections:
                         await self.active_connections[receiver_id].send_json(data)
+                    
+                    # Also send to sender so they get the real ID (fix for reaction sync)
+                    sender_id = data.get("sender_id")
+                    if sender_id and sender_id != receiver_id and sender_id in self.active_connections:
+                        await self.active_connections[sender_id].send_json(data)
         except Exception as e:
             logger.error(f"Redis PubSub Error: {e}")
         finally:
@@ -158,7 +163,8 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                 if not message_id or not emoji:
                     continue
                 
-                chat_msg = await ChatMessageModel.get(message_id)
+                # Fetch the message with links to get sender and receiver IDs
+                chat_msg = await ChatMessageModel.get(message_id, fetch_links=True)
                 if chat_msg:
                     # Remove existing reaction from this user if any
                     chat_msg.reactions = [r for r in chat_msg.reactions if r.user_id != user_id]
