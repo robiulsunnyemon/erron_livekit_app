@@ -167,9 +167,16 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                 
                 if not message_id or not emoji:
                     continue
+
+                # Validate if message_id is a valid UUID (to prevent crash on temp_id)
+                try:
+                    uuid_message_id = UUID(message_id)
+                except ValueError:
+                    print(f"DEBUG: Ignored reaction on invalid/temp UUID: {message_id}") # DEBUG LOG
+                    continue
                 
                 # Fetch the message with links to get sender and receiver IDs
-                chat_msg = await ChatMessageModel.get(message_id, fetch_links=True)
+                chat_msg = await ChatMessageModel.get(uuid_message_id, fetch_links=True)
                 if chat_msg:
                     # Remove existing reaction from this user if any
                     chat_msg.reactions = [r for r in chat_msg.reactions if r.user_id != user_id]
