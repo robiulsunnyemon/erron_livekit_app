@@ -90,6 +90,11 @@ class ConnectionManager:
                 except Exception as e:
                     logger.error(f"Local Send Error (Sender): {e}")
 
+    async def send_personal_message(self, message: dict, receiver_id: str):
+        # Add receiver_id to message so broadcast_to_redis handles routing
+        message["receiver_id"] = receiver_id
+        await self.broadcast_to_redis(message)
+
 manager = ConnectionManager()
 
 @router.websocket("/ws")
