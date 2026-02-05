@@ -80,7 +80,15 @@ class ConnectionManager:
                 try:
                     await self.active_connections[receiver_id].send_json(message)
                 except Exception as e:
-                    logger.error(f"Local Send Error: {e}")
+                    logger.error(f"Local Send Error (Receiver): {e}")
+            
+            # ALSO SEND TO SENDER (Echo for ID sync)
+            sender_id = message.get("sender_id")
+            if sender_id and sender_id != receiver_id and sender_id in self.active_connections:
+                try:
+                    await self.active_connections[sender_id].send_json(message)
+                except Exception as e:
+                    logger.error(f"Local Send Error (Sender): {e}")
 
 manager = ConnectionManager()
 
