@@ -118,12 +118,14 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                 text = message_data.get("message")
                 image_url = message_data.get("image_url")
                 replied_to_id = message_data.get("replied_to_id")
+                temp_id = message_data.get("temp_id") # Get temp_id from client
 
                 # Save to Database
                 receiver_uuid = UUID(receiver_id)
                 receiver = await UserModel.get(receiver_uuid)
 
                 if current_user and receiver:
+                    print(f"DEBUG: Processing message from {user_id} to {receiver_id}: {text}") # DEBUG LOG
                     replied_to_uuid = None
                     if replied_to_id:
                         try:
@@ -139,6 +141,7 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                         replied_to_id=replied_to_uuid
                     )
                     await chat_msg.insert()
+                    print(f"DEBUG: Message saved with ID: {chat_msg.id}") # DEBUG LOG
 
                     # Prepare payload for real-time delivery
                     payload = {
@@ -150,10 +153,12 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
                         "image_url": image_url,
                         "replied_to_id": str(chat_msg.replied_to_id) if chat_msg.replied_to_id else None,
                         "created_at": chat_msg.created_at.isoformat(),
+                        "temp_id": temp_id, # Echo back to client
                         "reactions": []
                     }
 
                     # Broadcast via Redis (handles multi-instance)
+                    print(f"DEBUG: Broadcasting payload: {payload}") # DEBUG LOG
                     await manager.broadcast_to_redis(payload)
 
             elif msg_type == "reaction":
