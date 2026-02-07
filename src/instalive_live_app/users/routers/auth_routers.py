@@ -56,7 +56,25 @@ async def create_user(user: UserCreate):
     return UserResponse.model_validate(new_user)
 
 
+@router.post("/signup/admin" ,status_code=status.HTTP_201_CREATED)
+async def create_user(user: UserCreate):
+    await check_feature_access("registration")
+    hashed_password = hash_password(user.password)
+    db_user = await UserModel.find_one(UserModel.email == user.email)
+    if db_user:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
+    otp = generate_otp()
+    new_user = UserModel(
+        first_name=user.first_name,
+        last_name=user.last_name,
+        email=user.email,
+        password=hashed_password,
+        otp=otp,
+        role=UserRole.ADMIN
 
+    )
+    new_user = await new_user.create()
+    return new_user
 
 
 # POST create moderator (Admin only)
