@@ -132,7 +132,13 @@ async def livekit_webhook(request: Request):
 from instalive_live_app.admin.utils import check_feature_access, log_admin_action
 
 @router.post("/start", status_code=status.HTTP_201_CREATED)
-async def start_stream(is_premium: bool, entry_fee: int,title:str,category:str, current_user: UserModel = Depends(get_current_user)):
+async def start_stream(
+        is_premium: bool,
+        entry_fee: int,
+        title:str,
+        category:str,
+        thumbnail: Optional[str] = None,
+        current_user: UserModel = Depends(get_current_user)):
     """হোস্টের জন্য লাইভ শুরু করার এন্ডপয়েন্ট"""
     
     # Emergency Switch Check
@@ -162,7 +168,7 @@ async def start_stream(is_premium: bool, entry_fee: int,title:str,category:str, 
         room_name=channel_name,
         can_publish=True
     )
-
+    stream_thumbnail = thumbnail if thumbnail else current_user.profile_image
     new_live = LiveStreamModel(
         host=current_user.to_ref(),
         channel_name=channel_name,
@@ -172,7 +178,7 @@ async def start_stream(is_premium: bool, entry_fee: int,title:str,category:str, 
         status="live",
         title=title,
         category=category,
-        thumbnail=current_user.profile_image
+        thumbnail=stream_thumbnail
     )
     await new_live.insert()
 
