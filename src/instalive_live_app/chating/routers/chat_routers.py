@@ -225,11 +225,11 @@ async def websocket_endpoint(websocket: WebSocket, current_user: UserModel = Dep
 
 @router.get("/active-users", response_model=List[UserResponse])
 async def get_active_users(current_user: UserModel = Depends(get_current_user)):
-    """বর্তমানে চ্যাটে এক্টিভ থাকা ইউজারদের তালিকা"""
+    """List of users currently active in chat"""
     active_ids = list(manager.active_connections.keys())
     
-    # বর্তমান ইউজারকে বাদ দিয়ে বাকিদের ডাটাবেস থেকে নিয়ে আসা
-    # UUID তে কনভার্ট করে Beanie ইন কুয়েরি ব্যবহার করা যায় অথবা লুপ চালানো যায়
+    # Retrieve other users from the database except the current user
+    # Can be converted to UUID for Beanie 'in' query or using a loop
     users = []
     for uid in active_ids:
         if uid != str(current_user.id):
@@ -240,7 +240,7 @@ async def get_active_users(current_user: UserModel = Depends(get_current_user)):
 
 @router.get("/history/{receiver_id}", response_model=List[ChatMessageResponse])
 async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, current_user: UserModel = Depends(get_current_user)):
-    """নির্দিষ্ট ইউজারের সাথে চ্যাট হিস্ট্রি লোড করা"""
+    """Load chat history with a specific user"""
     try:
         target_id = UUID(receiver_id)
     except ValueError:
@@ -271,7 +271,7 @@ async def get_chat_history(receiver_id: str, skip: int = 0, limit: int = 50, cur
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def get_conversations(current_user: UserModel = Depends(get_current_user)):
-    """ইউজারের সব চ্যাট হিস্ট্রি এবং লেটেস্ট মেসেজসহ লিস্ট"""
+    """List of all chat histories and latest messages for the user"""
     pipeline = [
         {
             "$match": {
@@ -342,7 +342,7 @@ async def get_conversations(current_user: UserModel = Depends(get_current_user))
 
 @router.put("/mark-read/{sender_id}")
 async def mark_messages_as_read(sender_id: str, current_user: UserModel = Depends(get_current_user)):
-    """নির্দিষ্ট ইউজারের সব মেসেজ 'read' হিসেবে মার্ক করা"""
+    """Mark all messages from a specific user as 'read'"""
     try:
         sender_uuid = UUID(sender_id)
     except ValueError:
@@ -360,7 +360,7 @@ async def mark_messages_as_read(sender_id: str, current_user: UserModel = Depend
 
 @router.post("/upload-image")
 async def upload_chat_image(request: Request, file: UploadFile = File(...), current_user: UserModel = Depends(get_current_user)):
-    """চ্যাটে পাঠানোর জন্য ছবি আপলোড এন্ডপয়েন্ট"""
+    """Image upload endpoint for sending in chat"""
     file_extension = file.filename.split(".")[-1]
     file_name = f"chat_{uuid.uuid4()}.{file_extension}"
     file_path = os.path.join("uploads", file_name)

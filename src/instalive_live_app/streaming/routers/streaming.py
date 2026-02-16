@@ -93,8 +93,8 @@ def create_livekit_token(identity: str, name: str, room_name: str, can_publish: 
 
 @router.post("/webhook")
 async def livekit_webhook(request: Request):
-    # নতুন ভার্সনে KeyProvider ব্যবহার করতে হয় অথবা সরাসরি WebhookReceiver এ keys দিতে হয়
-    # কিন্তু সবথেকে সহজ উপায় হলো টোকেন ভেরিফাই করা
+    # In newer versions, KeyProvider should be used or keys should be provided directly to WebhookReceiver
+    # But the easiest way is to verify the token
 
     auth_header = request.headers.get("Authorization")
     if not auth_header:
@@ -102,19 +102,19 @@ async def livekit_webhook(request: Request):
 
     try:
         body = await request.body()
-        # সরাসরি API key এবং Secret দিয়ে রিসিভার তৈরি
+        # Create receiver directly with API key and Secret
         receiver = api.WebhookReceiver(
             api.TokenVerifier(LIVEKIT_API_KEY, LIVEKIT_API_SECRET)
         )
 
-        # ইভেন্ট রিসিভ করা
+        # Receive event
         event = receiver.receive(body.decode("utf-8"), auth_header)
 
     except Exception as e:
         logger.error(f"Webhook Verification Error: {e}")
         raise HTTPException(status_code=400, detail="Verification failed")
 
-    # বাকি লজিক আগের মতোই থাকবে
+    # Remaining logic remains the same
     if event.event == "room_finished":
         room_name = event.room.name
         live_session = await LiveStreamModel.find_one(
@@ -139,7 +139,7 @@ async def start_stream(
         category:str,
         thumbnail: Optional[str] = None,
         current_user: UserModel = Depends(get_current_user)):
-    """হোস্টের জন্য লাইভ শুরু করার এন্ডপয়েন্ট"""
+    """Endpoint for the host to start a live stream"""
     
     # Emergency Switch Check
     if is_premium:
@@ -213,9 +213,9 @@ async def start_stream(
 
 @router.post("/join/{session_id}")
 async def join_stream(session_id: str, request: Request):
-    """ভিউয়ারের জন্য জয়েন করার এন্ডপয়েন্ট (কয়েন ট্রানজ্যাকশনসহ) - গেস্ট এলাউড"""
+    """Endpoint for viewers to join (including coin transaction) - Guest allowed"""
     
-    # টোকেন থেকে ইউজার বের করার চেষ্টা করা
+    # Attempt to retrieve user from token
     current_user = None
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):
@@ -235,7 +235,7 @@ async def join_stream(session_id: str, request: Request):
     has_paid = not db_live_stream.is_premium
 
     if current_user:
-        # মাস্ট রেজিস্টার্ড ইউজারদের জন্য ভিউ রেকর্ড আপডেট
+        # Update view record for registered users
         existing_viewer = await LiveViewerModel.find_one(
             LiveViewerModel.session.id == db_live_stream.id,
             LiveViewerModel.user.id == current_user.id
@@ -263,12 +263,12 @@ async def join_stream(session_id: str, request: Request):
         identity = str(current_user.id)
         name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or "User"
     else:
-        # গেস্ট ইউজার লজিক
+        # Guest user logic
         identity = f"guest_{int(time.time())}"
         name = "Guest User"
-        has_paid = False # গেস্টদের জন্য প্রিমিয়াম স্ট্রিমে সবসময় পে করতে হবে (যা তারা পারবে না, তাই ব্লার থাকবে)
+        has_paid = False # Guests must always pay for premium streams (which they cannot, so it will remain blurred)
         if not db_live_stream.is_premium:
-            has_paid = True # ফ্রি স্ট্রিম হলে গেস্টদের জন্যও পেইড (ব্লার হবে না)
+            has_paid = True # If it's a free stream, even guests are considered paid (will not be blurred)
 
     token = create_livekit_token(
         identity=identity,
@@ -561,7 +561,7 @@ async def get_active_streams_stats():
 @router.get("/search", response_model=List[LiveStreamResponse])
 async def search_streams(q: str):
     """
-    হোস্টের নাম, টাইটেল, চ্যানেল নাম এবং ক্যাটাগরি অনুযায়ী সার্চ করার এন্ডপয়েন্ট।
+    Endpoint to search by host name, title, channel name, and category.
     """
     pipeline = [
         {"$match": {"status": "live"}},
@@ -590,14 +590,14 @@ async def search_streams(q: str):
     
     results = await LiveStreamModel.aggregate(pipeline).to_list()
     
-    # LiveStreamResponse এর সাথে মিল রাখার জন্য এবং KYC পপুলেট করার জন্য
-    # রেজাল্টগুলো ম্যানুয়ালি প্রসেস করা হচ্ছে
+    # To match with LiveStreamResponse and populate KYC
+    # Processing results manually
     streams_with_kyc = []
     for res in results:
-        # DB ID কে স্ট্রিং হিসেবে এবং _id কে id হিসেবে সেট করা
+        # Setting DB ID as string and _id as id
         res["id"] = res["_id"]
         
-        # KYC পপুলেশন
+        # KYC Population
         host_info = res.get("host_info")
         if host_info:
             # We need a UserModel object for populate_user_kyc

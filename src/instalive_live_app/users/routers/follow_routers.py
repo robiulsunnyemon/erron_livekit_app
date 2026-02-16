@@ -33,7 +33,7 @@ async def follow_user(target_id: str, current_user: UserModel = Depends(get_curr
     if not target_user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Beanie Link চেক করার সঠিক উপায়
+    # Correct way to check Beanie Link
     is_already_following = any(get_link_id(link) == str(target_oid) for link in current_user.following)
 
     if is_already_following:
@@ -92,7 +92,7 @@ async def unfollow_user(target_id: str, current_user: UserModel = Depends(get_cu
 
 @router.get("/me/following-list")
 async def get_my_following(current_user: UserModel = Depends(get_current_user)):
-    # fetch_links=True সরাসরি রিলেটেড ডাটা নিয়ে আসে
+    # fetch_links=True brings related data directly
     user = await UserModel.find_one(UserModel.id == current_user.id, fetch_links=True)
     return user.following
 
@@ -100,15 +100,15 @@ async def get_my_following(current_user: UserModel = Depends(get_current_user)):
 @router.get("/active-priority-list")
 async def get_active_priority_list(current_user: UserModel = Depends(get_current_user)):
     """
-    আপনার মূল রিকোয়ারমেন্ট: B ইউজারকে (ফলো করা ইউজার) সবার উপরে রেখে অনলাইন লিস্ট
+    Original requirement: Online list with followed user (User B) at the top
     """
-    # ১. অনলাইনে থাকা ইউজারদের আনা
+    # 1. Get online users
     online_users = await UserModel.find(UserModel.is_online == True).to_list()
 
-    # ২. কারেন্ট ইউজারের ফলোয়িং আইডিগুলোর একটি সেট তৈরি (দ্রুত সার্চের জন্য)
+    # 2. Create a set of following IDs for the current user (for fast searching)
     following_ids = {get_link_id(link) for link in current_user.following}
 
-    # ৩. সর্টিং: B (যাকে ফলো করছেন) লিস্টের উপরে থাকবে
+    # 3. Sorting: Followed users (User B) will be at the top of the list
     online_users.sort(key=lambda u: str(u.id) in following_ids, reverse=True)
 
     return online_users
@@ -117,8 +117,8 @@ async def get_active_priority_list(current_user: UserModel = Depends(get_current
 @router.get("/me/followers-list")
 async def get_my_followers(current_user: UserModel = Depends(get_current_user)):
     """
-    কারা আপনাকে ফলো করছে তাদের লিস্ট বের করা।
-    লজিক: এমন ইউজারদের খুঁজে বের করো যাদের 'following' লিস্টে আপনার ID আছে।
+    Get the list of users who are following you.
+    Logic: Find users who have your ID in their 'following' list.
     """
     followers = await UserModel.find(
         UserModel.following.id == current_user.id
@@ -130,7 +130,7 @@ async def get_my_followers(current_user: UserModel = Depends(get_current_user)):
 @router.get("/me/counts")
 async def get_social_counts(current_user: UserModel = Depends(get_current_user)):
     """
-    নিজের ফলোয়ার এবং ফলোয়িং সংখ্যা দেখার জন্য।
+    To see your own follower and following counts.
     """
     return {
         "follower_count": current_user.followers_count,
@@ -138,7 +138,7 @@ async def get_social_counts(current_user: UserModel = Depends(get_current_user))
     }
 
 
-# আপনি চাইলে নির্দিষ্ট কোনো ইউজারের আইডি দিয়েও তার কাউন্ট দেখতে পারেন
+# You can also view the count for a specific user using their ID
 @router.get("/{user_id}/stats")
 async def get_user_stats(user_id: str):
     try:

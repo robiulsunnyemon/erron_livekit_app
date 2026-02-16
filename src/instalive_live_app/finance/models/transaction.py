@@ -7,8 +7,8 @@ from instalive_live_app.core.base.base import BaseCollection
 from instalive_live_app.users.models.user_models import UserModel
 
 class TransactionType(str, Enum):
-    CREDIT = "credit"  # যোগ হবে (e.g. Received Gift, Topup)
-    DEBIT = "debit"    # বিয়োগ হবে (e.g. Sent Gift, Entry Fee)
+    CREDIT = "credit"  # Will be added (e.g. Received Gift, Topup)
+    DEBIT = "debit"    # Will be subtracted (e.g. Sent Gift, Entry Fee)
 
 class TransactionReason(str, Enum):
     GIFT_SENT = "gift_sent"

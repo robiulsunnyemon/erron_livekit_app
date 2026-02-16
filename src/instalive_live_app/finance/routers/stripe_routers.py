@@ -54,7 +54,7 @@ async def stripe_webhook(request: Request):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid signature")
 
     # Handle the event
-    print(f"🔔 Stripe Webhook received event: {event['type']}")
+    print(f"Stripe Webhook received event: {event['type']}")
     
     # Check for Idempotency: Store processed Stripe event.id
     existing_event = await ProcessedStripeEvent.find_one(ProcessedStripeEvent.event_id == event['id'])
@@ -67,7 +67,7 @@ async def stripe_webhook(request: Request):
         
         # Verify status
         if payment_intent['status'] != 'succeeded':
-             print(f"⚠️ PaymentIntent status is {payment_intent['status']}, not succeeded. Skipping.")
+             print(f"PaymentIntent status is {payment_intent['status']}, not succeeded. Skipping.")
              return {"status": "ignored"}
 
         # Record event as processed
@@ -76,7 +76,7 @@ async def stripe_webhook(request: Request):
         user_id = payment_intent['metadata'].get('user_id')
         tokens = payment_intent['metadata'].get('tokens')
 
-        print(f"💳 PaymentIntent succeeded. UserID: {user_id}, Tokens: {tokens}")
+        print(f"PaymentIntent succeeded. UserID: {user_id}, Tokens: {tokens}")
 
         if user_id and tokens:
             user = await UserModel.get(user_id)
@@ -95,7 +95,7 @@ async def stripe_webhook(request: Request):
                 ).insert()
 
 
-                print(f"💰 User {user.email} topped up with {tokens} tokens via Stripe successfully.")
+                print(f"User {user.email} topped up with {tokens} tokens via Stripe successfully.")
                 
                 # Send Notification
                 await send_notification(
@@ -106,8 +106,8 @@ async def stripe_webhook(request: Request):
                     related_entity_id=payment_intent['id']
                 )
             else:
-                print(f"❌ User not found for ID: {user_id}")
+                print(f" User not found for ID: {user_id}")
         else:
-            print(f"⚠️ Missing metadata in PaymentIntent: user_id={user_id}, tokens={tokens}")
+            print(f"Missing metadata in PaymentIntent: user_id={user_id}, tokens={tokens}")
 
     return {"status": "success"}

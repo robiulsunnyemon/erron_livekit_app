@@ -32,7 +32,7 @@ class LiveStreamModel(BaseCollection):
 
     @after_event(Delete)
     async def cleanup_related_data(self):
-        # এই সেশনের সাথে যুক্ত সকল ডাটা ডিলিট করা হচ্ছে
+        # Deleting all data associated with this session
         session_id = self.id
 
         await LiveViewerModel.find(LiveViewerModel.session.id == session_id).delete()

@@ -10,8 +10,8 @@ router = APIRouter(prefix="/chat/call", tags=["Chat Call"])
 @router.post("/initiate")
 async def initiate_call(receiver_id: str, call_type: str, current_user: UserModel = Depends(get_current_user)):
     """
-    শুরু (Initiation): কলার কল শুরু করার জন্য এই এন্ডপয়েন্ট কল করবে।
-    রিিসিভারের ওয়েবসকেটে 'call_incoming' ইভেন্ট পাঠানো হবে।
+    Initiation: The caller will call this endpoint to start a call.
+    A 'call_incoming' event will be sent to the receiver's WebSocket.
     """
     room_name = f"call_{uuid.uuid4()}"
     token = create_livekit_token(
@@ -39,7 +39,7 @@ async def initiate_call(receiver_id: str, call_type: str, current_user: UserMode
 @router.post("/respond")
 async def respond_to_call(room_name: str, caller_id: str, action: str, current_user: UserModel = Depends(get_current_user)):
     """
-    রেসপন্স (Response): রিিসিভার কল এক্সেপ্ট বা রিজেক্ট করলে এই এন্ডপয়েন্ট কল করবে।
+    Response: The receiver will call this endpoint when accepting or rejecting a call.
     """
     if action == "accept":
         token = create_livekit_token(
@@ -69,7 +69,7 @@ async def respond_to_call(room_name: str, caller_id: str, action: str, current_u
 @router.post("/end")
 async def end_call(other_user_id: str, room_name: str = "", current_user: UserModel = Depends(get_current_user)):
     """
-    কল শেষ করা (End Call): যেকোনো পক্ষ কল শেষ করলে সিগনাল পাঠাবে।
+    End Call: Either party will send a signal when ending the call.
     """
     payload = {
         "type": "call_ended",
