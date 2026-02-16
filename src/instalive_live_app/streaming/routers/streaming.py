@@ -688,6 +688,7 @@ async def report_viewer(
     await report.insert()
 
     return LiveViewerReportResponse(
+        id=report.id,
         session_id=str(live_session.id),
         reporter_id=str(current_user.id),
         reported_user_id=str(reported_user.id),
@@ -717,6 +718,7 @@ async def get_viewer_reports(
     response = []
     for report in reports:
         response.append(LiveViewerReportResponse(
+            id=report.id,
             session_id=str(report.session.id) if report.session else "",
             reporter_id=str(report.reporter.id) if report.reporter else "",
             reported_user_id=str(report.reported_user.id) if report.reported_user else "",
