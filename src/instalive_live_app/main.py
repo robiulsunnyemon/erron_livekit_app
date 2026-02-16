@@ -43,6 +43,7 @@ origins = [
     "http://localhost:54921",
     "http://localhost",
     "https://instalive.cloud/"
+    "https://instalive.cloud"
 ]
 
 app.add_middleware(
