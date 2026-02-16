@@ -109,3 +109,16 @@ class LiveStreamReportReviewModel(BaseCollection):
 
     class Settings:
         name = "live_report_reviews"
+
+
+class LiveViewerReportModel(BaseCollection):
+    session: Link[LiveStreamModel]
+    reporter: Link[UserModel]  # The host who is reporting
+    reported_user: Link[UserModel]  # The viewer being reported
+    reason: str
+    description: Optional[str] = None
+    status: str = "PENDING"  # PENDING, RESOLVED, DISMISSED
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+
+    class Settings:
+        name = "live_viewer_reports"

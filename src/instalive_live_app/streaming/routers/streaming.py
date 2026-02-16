@@ -13,8 +13,8 @@ from instalive_live_app.users.models.moderator_models import ModeratorModel
 from instalive_live_app.users.utils.user_role import UserRole
 from instalive_live_app.users.utils.get_current_user import get_current_user
 from instalive_live_app.finance.models.transaction import TransactionModel, TransactionType, TransactionReason
-from instalive_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel
-from instalive_live_app.streaming.schemas.streaming import LiveStreamResponse, ActiveStreamsStatsResponse
+from instalive_live_app.streaming.models.streaming import LiveCommentModel, LiveLikeModel, LiveViewerReportModel
+from instalive_live_app.streaming.schemas.streaming import LiveStreamResponse, ActiveStreamsStatsResponse, LiveViewerReportCreate, LiveViewerReportResponse
 from instalive_live_app.users.utils.populate_kyc import populate_user_kyc
 from instalive_live_app.notifications.utils import send_notification
 from instalive_live_app.notifications.models import NotificationType
@@ -655,3 +655,75 @@ async def run_lottery(session_id: str, current_user: UserModel = Depends(get_cur
             "profile_image": winner_user.profile_image
         }
     }
+
+@router.post("/{session_id}/report/viewer", response_model=LiveViewerReportResponse, status_code=status.HTTP_201_CREATED)
+async def report_viewer(
+    session_id: str,
+    report_data: LiveViewerReportCreate,
+    current_user: UserModel = Depends(get_current_user)
+):
+    """
+    Host reports a viewer.
+    """
+    live_session = await LiveStreamModel.get(session_id, fetch_links=True)
+    if not live_session:
+        raise HTTPException(status_code=404, detail="Live stream not found")
+
+    # Check if reporter is host
+    if live_session.host.id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the host can report viewers")
+
+    # Check reported user exists
+    reported_user = await UserModel.get(report_data.reported_user_id)
+    if not reported_user:
+        raise HTTPException(status_code=404, detail="Reported user not found")
+
+    report = LiveViewerReportModel(
+        session=live_session.to_ref(),
+        reporter=current_user.to_ref(),
+        reported_user=reported_user.to_ref(),
+        reason=report_data.reason,
+        description=report_data.description
+    )
+    await report.insert()
+
+    return LiveViewerReportResponse(
+        session_id=str(live_session.id),
+        reporter_id=str(current_user.id),
+        reported_user_id=str(reported_user.id),
+        reason=report.reason,
+        description=report.description,
+        status=report.status,
+        created_at=report.created_at
+    )
+
+
+@router.get("/reports/viewers", response_model=List[LiveViewerReportResponse])
+async def get_viewer_reports(
+    current_user: Union[UserModel, ModeratorModel] = Depends(get_current_user)
+):
+    """
+    Get all viewer reports. (Admin/Moderator only)
+    """
+    # Check permissions
+    is_admin = isinstance(current_user, UserModel) and current_user.role == UserRole.ADMIN
+    is_moderator = isinstance(current_user, ModeratorModel)
+
+    if not (is_admin or is_moderator):
+        raise HTTPException(status_code=403, detail="Permission denied")
+
+    reports = await LiveViewerReportModel.find(fetch_links=True).sort("-created_at").to_list()
+    
+    response = []
+    for report in reports:
+        response.append(LiveViewerReportResponse(
+            session_id=str(report.session.id) if report.session else "",
+            reporter_id=str(report.reporter.id) if report.reporter else "",
+            reported_user_id=str(report.reported_user.id) if report.reported_user else "",
+            reason=report.reason,
+            description=report.description,
+            status=report.status,
+            created_at=report.created_at
+        ))
+    
+    return response

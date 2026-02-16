@@ -59,3 +59,22 @@ class LiveStreamReportResponse(BaseResponse):
 
     class Config:
         from_attributes = True
+
+
+class LiveViewerReportCreate(BaseModel):
+    reported_user_id: str
+    reason: str
+    description: Optional[str] = None
+
+
+class LiveViewerReportResponse(BaseResponse):
+    session_id: str
+    reporter_id: str
+    reported_user_id: str
+    reason: str
+    description: Optional[str]
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
