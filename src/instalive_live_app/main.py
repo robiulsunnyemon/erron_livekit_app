@@ -42,7 +42,7 @@ origins = [
     "https://admin.instalive.app",
     "http://localhost:54921",
     "http://localhost",
-    "https://instalive.cloud/"
+    "https://instalive.cloud/",
     "https://instalive.cloud"
 ]
 
